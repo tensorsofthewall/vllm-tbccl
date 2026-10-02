@@ -1,0 +1,97 @@
+[
+ {
+  "prompt": "The capital of France is",
+  "prompt_token_ids": [
+   504,
+   3575,
+   282,
+   4649,
+   314
+  ],
+  "token_ids": [
+   7042,
+   28,
+   260,
+   3995,
+   2240,
+   281,
+   4649,
+   284,
+   260,
+   2642,
+   284,
+   2536,
+   14157,
+   282,
+   260,
+   1798
+  ],
+  "text": " Paris, the largest city in France and the cultural and economic hub of the country"
+ },
+ {
+  "prompt": "In a distant future, robots and humans lived together and",
+  "prompt_token_ids": [
+   788,
+   253,
+   9931,
+   1774,
+   28,
+   11104,
+   284,
+   2973,
+   4161,
+   1592,
+   284
+  ],
+  "token_ids": [
+   4147,
+   1592,
+   30,
+   1069,
+   736,
+   746,
+   1592,
+   288,
+   1235,
+   284,
+   2125,
+   260,
+   2240,
+   28,
+   284,
+   502
+  ],
+  "text": " worked together. They would work together to build and maintain the city, and they"
+ },
+ {
+  "prompt": "def fibonacci(n):\n    ",
+  "prompt_token_ids": [
+   1604,
+   3987,
+   46477,
+   24,
+   94,
+   727,
+   2367
+  ],
+  "token_ids": [
+   585,
+   304,
+   10204,
+   216,
+   32,
+   42,
+   466,
+   3467,
+   11049,
+   1470,
+   94,
+   1251,
+   325,
+   253,
+   1603,
+   29
+  ],
+  "text": " if n <= 0:\n         raise ValueError(\"n must be a non-"
+ }
+]

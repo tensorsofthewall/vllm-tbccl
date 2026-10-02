@@ -1,0 +1,425 @@
+From 98232c1d5db81c28f3e612300c5a9dd7317f80d1 Mon Sep 17 00:00:00 2001
+From: sandesh-bharadwaj <sndshvnktsh@gmail.com>
+Date: Fri, 2 Oct 2026 17:34:12 +0400
+Subject: [PATCH] Make pipeline-parallel transport pluggable
+
+Add a PipelineTransport protocol and a default MlxRingPipelineTransport that wraps the
+existing mx.distributed ring (default behavior unchanged). VLLM_METAL_PP_TRANSPORT_CLS
+selects another transport class by qualname; VLLM_METAL_DIST_BACKEND (default gloo)
+selects the torch.distributed backend of the worker's control groups.
+---
+ tests/test_pipeline_transport.py   | 135 +++++++++++++++++++++++++++++
+ vllm_metal/distributed/__init__.py |   4 +
+ vllm_metal/distributed/pipeline.py | 107 +++++++++++++++++++++--
+ vllm_metal/envs.py                 |  10 +++
+ vllm_metal/v1/model_runner.py      |  10 +++
+ vllm_metal/v1/worker.py            |  15 +++-
+ 6 files changed, 271 insertions(+), 10 deletions(-)
+ create mode 100644 tests/test_pipeline_transport.py
+
+diff --git a/tests/test_pipeline_transport.py b/tests/test_pipeline_transport.py
+new file mode 100644
+index 0000000..7cc104c
+--- /dev/null
++++ b/tests/test_pipeline_transport.py
+@@ -0,0 +1,135 @@
++# SPDX-License-Identifier: Apache-2.0
++"""Pluggable pipeline-parallel transport: default ring unchanged, external transport selected by qualname."""
++
++import mlx.core as mx
++import pytest
++
++import vllm_metal.envs as envs
++from vllm_metal.distributed import (
++    MlxRingPipelineTransport,
++    PipelineGroup,
++    PipelineTransport,
++)
++from vllm_metal.distributed.pipeline import pipeline_recv, pipeline_send
++
++
++class _FakeGroup:
++    def __init__(self, size: int, rank: int = 0) -> None:
++        self._size, self._rank = size, rank
++
++    def size(self) -> int:
++        return self._size
++
++    def rank(self) -> int:
++        return self._rank
++
++
++class RecordingTransport:
++    """A fake external transport (referenced by qualname from the tests)."""
++
++    instances: list = []
++
++    def __init__(self, rank: int, size: int, peer_ips: list[str]) -> None:
++        self.rank, self.size, self.peer_ips = rank, size, peer_ips
++        self.sent: list = []
++        self.closed = False
++        RecordingTransport.instances.append(self)
++
++    def send(self, x, dst):
++        self.sent.append((tuple(x.shape), x.dtype, dst))
++        return mx.array(0)
++
++    def recv(self, shape, dtype, src):
++        self.recv_args = (shape, dtype, src)
++        return mx.ones(shape, dtype=dtype)
++
++    def close(self):
++        self.closed = True
++
++
++class BrokenTransport:
++    def __init__(self, rank, size, peer_ips):
++        self.rank, self.size = rank, size
++
++
++def _qual(cls) -> str:
++    return f"{cls.__module__}.{cls.__qualname__}"
++
++
++def test_default_group_wraps_ring_transport():
++    pp = PipelineGroup(_FakeGroup(2, 1))
++    assert isinstance(pp.transport, MlxRingPipelineTransport)
++    assert (pp.rank, pp.size, pp.is_first, pp.is_last) == (1, 2, False, True)
++    assert pp.group is pp.transport.group
++
++
++def test_bootstrap_defaults_to_ring(monkeypatch):
++    monkeypatch.delenv("VLLM_METAL_PP_TRANSPORT_CLS", raising=False)
++    called = {}
++
++    def fake_ring(cls, rank, peer_ips):
++        called["ring"] = (rank, peer_ips)
++        return "ring"
++
++    monkeypatch.setattr(PipelineGroup, "bootstrap_ring", classmethod(fake_ring))
++    assert PipelineGroup.bootstrap(0, 2, ["a", "b"]) == "ring"
++    assert called["ring"] == (0, ["a", "b"])
++
++
++def test_bootstrap_selects_external_transport(monkeypatch):
++    monkeypatch.setenv("VLLM_METAL_PP_TRANSPORT_CLS", _qual(RecordingTransport))
++    RecordingTransport.instances.clear()
++    pp = PipelineGroup.bootstrap(1, 2, ["10.0.0.1", "10.0.0.2"])
++    t = RecordingTransport.instances[0]
++    assert pp.transport is t and pp.group is None
++    assert (t.rank, t.size, t.peer_ips) == (1, 2, ["10.0.0.1", "10.0.0.2"])
++    assert pp.is_last and not pp.is_first and isinstance(t, PipelineTransport)
++    # recv/send go through the transport with the documented wire contract
++    h = pipeline_recv(pp, 5, 8, mx.float32)
++    assert h.shape == (1, 5, 8) and t.recv_args == ((5, 8), mx.float32, 0)
++    pp0 = PipelineGroup(None, RecordingTransport(0, 2, ["a", "b"]))
++    handle = pipeline_send(mx.zeros((1, 3, 8)), pp0)
++    assert pp0.transport.sent == [((3, 8), mx.float32, 1)] and handle.item() == 0
++
++
++def test_bad_transport_gives_clear_errors(monkeypatch):
++    monkeypatch.setenv("VLLM_METAL_PP_TRANSPORT_CLS", "no_such_module_xyz.Cls")
++    with pytest.raises(ImportError, match="Cannot load pipeline transport"):
++        PipelineGroup.bootstrap(0, 2, ["a", "b"])
++    monkeypatch.setenv("VLLM_METAL_PP_TRANSPORT_CLS", "NotQualified")
++    with pytest.raises(ValueError, match="package.module.Class"):
++        PipelineGroup.bootstrap(0, 2, ["a", "b"])
++    monkeypatch.setenv("VLLM_METAL_PP_TRANSPORT_CLS", _qual(BrokenTransport))
++    with pytest.raises(TypeError, match="does not implement PipelineTransport"):
++        PipelineGroup.bootstrap(0, 2, ["a", "b"])
++
++
++def test_external_transport_does_not_need_peer_ips(monkeypatch):
++    monkeypatch.setenv("VLLM_METAL_PP_TRANSPORT_CLS", _qual(RecordingTransport))
++    pp = PipelineGroup.bootstrap(0, 2)
++    assert pp.size == 2 and pp.transport.peer_ips is None
++    monkeypatch.delenv("VLLM_METAL_PP_TRANSPORT_CLS")
++    with pytest.raises(ValueError, match="needs peer_ips"):
++        PipelineGroup.bootstrap(0, 2)
++
++
++def test_env_defaults():
++    assert envs.VLLM_METAL_PP_TRANSPORT_CLS is None or isinstance(envs.VLLM_METAL_PP_TRANSPORT_CLS, str)
++    assert envs.VLLM_METAL_DIST_BACKEND == "gloo"
++
++
++def test_runner_passes_layout_to_optional_begin_step():
++    seen = {}
++
++    class T(RecordingTransport):
++        def begin_step(self, packed, scheduler_output):
++            seen["call"] = (packed, scheduler_output)
++
++    t = T(0, 2, None)
++    pp = PipelineGroup(None, t)
++    # the runner's call shape (decode rows first, then prefill rows)
++    begin = getattr(pp.transport, "begin_step", None)
++    assert begin is not None
++    begin(packed=[("d0", 1), ("p0", 5)], scheduler_output="sched")
++    assert seen["call"] == ([("d0", 1), ("p0", 5)], "sched")
++    assert getattr(PipelineGroup(_FakeGroup(2)).transport, "begin_step", None) is None   # ring: no hook
+diff --git a/vllm_metal/distributed/__init__.py b/vllm_metal/distributed/__init__.py
+index 8354d7f..210f2c0 100644
+--- a/vllm_metal/distributed/__init__.py
++++ b/vllm_metal/distributed/__init__.py
+@@ -2,7 +2,9 @@
+ """Distributed primitives for vLLM Metal (pipeline parallelism)."""
+ 
+ from vllm_metal.distributed.pipeline import (
++    MlxRingPipelineTransport,
+     PipelinedModel,
++    PipelineTransport,
+     PipelineGroup,
+     apply_pipeline_split,
+     is_non_last_stage,
+@@ -10,6 +12,8 @@ from vllm_metal.distributed.pipeline import (
+ )
+ 
+ __all__ = [
++    "MlxRingPipelineTransport",
++    "PipelineTransport",
+     "PipelineGroup",
+     "PipelinedModel",
+     "apply_pipeline_split",
+diff --git a/vllm_metal/distributed/pipeline.py b/vllm_metal/distributed/pipeline.py
+index d2600a1..c721c58 100644
+--- a/vllm_metal/distributed/pipeline.py
++++ b/vllm_metal/distributed/pipeline.py
+@@ -22,7 +22,7 @@ import os
+ import tempfile
+ from functools import cached_property
+ from pathlib import Path
+-from typing import Any
++from typing import Any, Protocol, runtime_checkable
+ 
+ import mlx.core as mx
+ import mlx.nn as nn
+@@ -56,6 +56,67 @@ def _ring_hosts(peer_ips: list[str]) -> list[list[str]]:
+     return [[f"{ip}:{base_port + r}"] for r, ip in enumerate(peer_ips)]
+ 
+ 
++@runtime_checkable
++class PipelineTransport(Protocol):
++    """Point-to-point activation transport between pipeline stages.
++
++    ``send`` may be lazy or eager; it returns an array the caller will ``mx.eval``
++    (an eager transport returns an already-complete handle such as ``mx.array(0)``).
++    ``recv`` returns the received activation with exactly ``shape``/``dtype``; the
++    declared descriptor MUST match the sender's wire array. Stage ``r`` receives from
++    ``r - 1`` and sends to ``r + 1``.
++    """
++
++    rank: int
++    size: int
++
++    def send(self, x: mx.array, dst: int) -> mx.array: ...
++
++    def recv(self, shape: tuple[int, ...], dtype: mx.Dtype, src: int) -> mx.array: ...
++
++    def close(self) -> None: ...
++
++    # Optional (not part of the required protocol): ``begin_step(packed, scheduler_output)`` is called once per
++    # forward step, before any send/recv, with ``packed`` = [(req_id, n_tokens), ...] in this stage's packed row order
++    # and the vLLM ``SchedulerOutput``. Transports that exchange activations with a peer that packs rows differently
++    # use it to reorder rows; the default ring ignores it.
++
++
++class MlxRingPipelineTransport:
++    """The default transport: lazy ``mx.distributed`` send/recv over an MLX group."""
++
++    def __init__(self, group: Group) -> None:
++        self.group = group
++        self.rank: int = group.rank()
++        self.size: int = group.size()
++
++    def send(self, x: mx.array, dst: int) -> mx.array:
++        return mx.distributed.send(x, dst, group=self.group)
++
++    def recv(self, shape: tuple[int, ...], dtype: mx.Dtype, src: int) -> mx.array:
++        return mx.distributed.recv(shape, dtype, src, group=self.group)
++
++    def close(self) -> None:
++        return None
++
++
++def _resolve_transport_class(qualname: str) -> type:
++    import importlib
++
++    module_name, _, attr = qualname.rpartition(".")
++    if not module_name:
++        raise ValueError(
++            f"VLLM_METAL_PP_TRANSPORT_CLS={qualname!r} must be a 'package.module.Class' qualname"
++        )
++    try:
++        cls = getattr(importlib.import_module(module_name), attr)
++    except (ImportError, AttributeError) as exc:
++        raise ImportError(
++            f"Cannot load pipeline transport {qualname!r} (VLLM_METAL_PP_TRANSPORT_CLS): {exc}"
++        ) from exc
++    return cls
++
++
+ class PipelineGroup:
+     """Thin wrapper over an ``mx.distributed`` group with stage helpers.
+ 
+@@ -65,13 +126,47 @@ class PipelineGroup:
+     is BOTH the first and the last stage (straight-through, no comms).
+     """
+ 
+-    def __init__(self, group: Group) -> None:
++    def __init__(self, group: Group | None, transport: PipelineTransport | None = None) -> None:
++        if transport is None:
++            if group is None:
++                raise ValueError("PipelineGroup needs an mx.distributed group or a transport")
++            transport = MlxRingPipelineTransport(group)
+         self.group = group
+-        self.rank: int = group.rank()
+-        self.size: int = group.size()
++        self.transport: PipelineTransport = transport
++        self.rank: int = transport.rank
++        self.size: int = transport.size
+         self.is_first: bool = self.rank == 0
+         self.is_last: bool = self.rank == self.size - 1
+ 
++    @classmethod
++    def bootstrap(
++        cls, rank: int, size: int, peer_ips: list[str] | None = None
++    ) -> PipelineGroup:
++        """Form the pipeline group: the MLX ring by default (``peer_ips`` required), or the
++        transport class named by ``VLLM_METAL_PP_TRANSPORT_CLS`` (constructed as
++        ``Class(rank=, size=, peer_ips=)``; ``peer_ips`` is ``None`` when the caller did not
++        discover node IPs, which only the ring needs)."""
++        qualname = envs.VLLM_METAL_PP_TRANSPORT_CLS
++        if not qualname:
++            if peer_ips is None:
++                raise ValueError("the MLX ring transport needs peer_ips")
++            return cls.bootstrap_ring(rank, peer_ips)
++        transport = _resolve_transport_class(qualname)(
++            rank=rank, size=size, peer_ips=None if peer_ips is None else list(peer_ips)
++        )
++        missing = [n for n in ("send", "recv", "close", "rank", "size") if not hasattr(transport, n)]
++        if missing:
++            raise TypeError(
++                f"Pipeline transport {qualname!r} does not implement PipelineTransport (missing {missing})"
++            )
++        if transport.size != size or transport.rank != rank:
++            raise RuntimeError(
++                f"Pipeline transport {qualname!r} formed rank/size {transport.rank}/{transport.size}, "
++                f"expected {rank}/{size}"
++            )
++        logger.info("Pipeline transport %s: rank=%d/%d", qualname, rank, size)
++        return cls(None, transport)
++
+     @classmethod
+     def bootstrap_ring(cls, rank: int, peer_ips: list[str]) -> PipelineGroup:
+         """Form the MLX ring across ``peer_ips`` (one per rank), then init.
+@@ -210,7 +305,7 @@ def pipeline_recv(
+     sender's wire array — a mismatch deadlocks (the ring backend does not
+     validate across peers).
+     """
+-    wire = mx.distributed.recv((n_tokens, hidden), dtype, pp.rank - 1, group=pp.group)
++    wire = pp.transport.recv((n_tokens, hidden), dtype, pp.rank - 1)
+     return wire[None]
+ 
+ 
+@@ -229,7 +324,7 @@ def pipeline_send(h: mx.array, pp: PipelineGroup) -> mx.array:
+             f"pipeline_send expects a (1, n_tokens, hidden) hidden state, "
+             f"got shape {tuple(h.shape)}"
+         )
+-    return mx.distributed.send(h[0], pp.rank + 1, group=pp.group)
++    return pp.transport.send(h[0], pp.rank + 1)
+ 
+ 
+ class PipelinedModel:
+diff --git a/vllm_metal/envs.py b/vllm_metal/envs.py
+index f0a880e..0c0415f 100644
+--- a/vllm_metal/envs.py
++++ b/vllm_metal/envs.py
+@@ -128,6 +128,8 @@ if TYPE_CHECKING:
+     VLLM_METAL_BUILD_FROM_SOURCE: bool = False
+     VLLM_METAL_VISIBLE_DEVICES: str | None = None
+     VLLM_METAL_RING_BASE_PORT: int = 32323
++    VLLM_METAL_PP_TRANSPORT_CLS: str | None = None
++    VLLM_METAL_DIST_BACKEND: str = "gloo"
+ 
+ environment_variables: dict[str, Callable[[], Any]] = {
+     # MLX device type: "gpu" (default) or "cpu".
+@@ -234,6 +236,14 @@ environment_variables: dict[str, Callable[[], Any]] = {
+         maximum=65535,
+         note=" (the user-port range)",
+     ),
++    # Pipeline-parallel activation transport: python qualname (``pkg.mod.Class``) of a
++    # class implementing ``vllm_metal.distributed.PipelineTransport``. Unset (default)
++    # = the built-in MLX ring. The class is constructed as
++    # ``Class(rank=<stage>, size=<stages>, peer_ips=<list>)``.
++    "VLLM_METAL_PP_TRANSPORT_CLS": lambda: os.getenv("VLLM_METAL_PP_TRANSPORT_CLS") or None,
++    # torch.distributed backend for vLLM's own groups on the Metal worker (control
++    # plane). Default "gloo", unchanged; a pluggable transport may need another.
++    "VLLM_METAL_DIST_BACKEND": lambda: os.getenv("VLLM_METAL_DIST_BACKEND", "gloo") or "gloo",
+ }
+ 
+ 
+diff --git a/vllm_metal/v1/model_runner.py b/vllm_metal/v1/model_runner.py
+index fe88e21..0c60c30 100644
+--- a/vllm_metal/v1/model_runner.py
++++ b/vllm_metal/v1/model_runner.py
+@@ -1395,6 +1395,16 @@ class MetalModelRunner:
+                 # other stage hands its raw hidden state to pipeline_send, whose
+                 # lazy op is forced by the async_eval below.
+                 assert self._pp_model is not None
++                # Optional transport hook: tell the transport this step's packed layout (the
++                # ``[decode rows][prefill rows]`` request order and per-request token counts) and the
++                # scheduler output, before any activation crosses the stage boundary.
++                begin_step = getattr(self.pp.transport, "begin_step", None)
++                if begin_step is not None:
++                    begin_step(
++                        packed=[(rid, 1) for rid, _ in decode_reqs]
++                        + [(pr.req_id, len(pr.token_ids)) for pr in prefill_reqs],
++                        scheduler_output=scheduler_output,
++                    )
+                 stage_output = self._pp_model(input_ids, cache=offset_caches)
+                 if self.pp.is_last:
+                     logits = self._extract_logits(stage_output)
+diff --git a/vllm_metal/v1/worker.py b/vllm_metal/v1/worker.py
+index 72820e4..2647f29 100644
+--- a/vllm_metal/v1/worker.py
++++ b/vllm_metal/v1/worker.py
+@@ -29,6 +29,7 @@ from vllm.v1.worker.worker_base import CompilationTimes, WorkerBase
+ 
+ from vllm_metal.attention.caches.placement import KV_CACHE_LAYOUT
+ from vllm_metal.config import get_config
++import vllm_metal.envs as envs
+ from vllm_metal.distributed import PipelineGroup
+ from vllm_metal.platform import MetalPlatform
+ from vllm_metal.utils import set_wired_limit
+@@ -55,7 +56,7 @@ def init_worker_distributed_environment(
+         rank,
+         distributed_init_method,
+         local_rank,
+-        backend="gloo",  # Use gloo for CPU-based distributed
++        backend=envs.VLLM_METAL_DIST_BACKEND,  # "gloo" unless overridden (control plane)
+     )
+ 
+     ensure_model_parallel_initialized(
+@@ -158,9 +159,15 @@ class MetalWorker(WorkerBase):
+             import torch.distributed as dist
+             from vllm.utils.network_utils import get_ip
+ 
+-            peer_ips: list[str] = [""] * self.parallel_config.world_size
+-            dist.all_gather_object(peer_ips, get_ip())
+-            self.pp = PipelineGroup.bootstrap_ring(self.rank, peer_ips)
++            peer_ips: list[str] | None = None
++            if not envs.VLLM_METAL_PP_TRANSPORT_CLS:
++                # Only the MLX ring needs every stage's node IP; a pluggable transport owns its own discovery
++                # (and must not be forced into a WORLD collective that other backends' workers never join).
++                peer_ips = [""] * self.parallel_config.world_size
++                dist.all_gather_object(peer_ips, get_ip())
++            self.pp = PipelineGroup.bootstrap(
++                self.rank, self.parallel_config.world_size, peer_ips
++            )
+             logger.info(
+                 "Pipeline stage %d/%d (is_first=%s, is_last=%s)",
+                 self.pp.rank,
+-- 
+2.54.0
+

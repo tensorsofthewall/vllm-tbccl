@@ -13,14 +13,14 @@ pipeline neighbours:
 
 Operations vLLM does not need for PP=2/TP=1 raise NotImplementedError.
 """
-import pickle
-
 import torch
 import torch.distributed as dist
 from vllm.distributed.device_communicators.base_device_communicator import DeviceCommunicatorBase
 from vllm.distributed.parallel_state import TensorMetadata, _split_tensor_dict
 
 from . import diagnostics as diag
+from .peer import peer_kind, publish_kind
+from .wire import recv_object, send_object
 
 
 class TBCCLDeviceCommunicator(DeviceCommunicatorBase):
@@ -34,9 +34,16 @@ class TBCCLDeviceCommunicator(DeviceCommunicatorBase):
         backend = dist.get_backend(device_group) if device_group is not None else None
         if backend != "tbccl":
             raise RuntimeError(f"TBCCLDeviceCommunicator needs a device_group created with backend 'tbccl' (got {backend})")
-        gathered = [None, None]
-        dist.all_gather_object(gathered, self.device.type, group=self.cpu_group)
-        self.peer_device_type = gathered[1 - self.rank_in_group]
+        publish_kind(self.global_rank, self.device.type)
+        _install_step_timing()
+        self._peer_device_type = None
+
+    @property
+    def peer_device_type(self):
+        # read lazily (bounded store wait): only the CPU-platform tensor-dict path needs it
+        if self._peer_device_type is None:
+            self._peer_device_type = peer_kind(self.ranks[1 - self.rank_in_group])
+        return self._peer_device_type
 
     # -- plain tensor ops (all over the TBCCL device group) ------------------------------------------------------------
     def all_reduce(self, input_):
@@ -88,18 +95,11 @@ class TBCCLDeviceCommunicator(DeviceCommunicatorBase):
         raise NotImplementedError("vllm-tbccl: reduce_scatterv is not implemented")
 
     # -- tensor-dict fast path -----------------------------------------------------------------------------------------
-    def _send_object(self, obj, dst):  # identical wire format to GroupCoordinator.send_object
-        payload = torch.frombuffer(bytearray(pickle.dumps(obj)), dtype=torch.uint8)
-        size = torch.tensor([payload.numel()], dtype=torch.long, device="cpu")
-        dist.send(size, dst=self.ranks[dst], group=self.cpu_group)
-        dist.send(payload, dst=self.ranks[dst], group=self.cpu_group)
+    def _send_object(self, obj, dst):
+        send_object(obj, self.ranks[dst], self.cpu_group)
 
-    def _recv_object(self, src):  # identical wire format to GroupCoordinator.recv_object
-        size = torch.empty(1, dtype=torch.long, device="cpu")
-        dist.recv(size, src=self.ranks[src], group=self.cpu_group)
-        payload = torch.empty(int(size.item()), dtype=torch.uint8, device="cpu")
-        dist.recv(payload, src=self.ranks[src], group=self.cpu_group)
-        return pickle.loads(payload.numpy().tobytes())
+    def _recv_object(self, src):
+        return recv_object(self.ranks[src], self.cpu_group)
 
     def send_tensor_dict(self, tensor_dict, dst):
         metadata, tensors = _split_tensor_dict(tensor_dict)
@@ -125,3 +125,26 @@ class TBCCLDeviceCommunicator(DeviceCommunicatorBase):
             else:
                 out[key] = value
         return out
+
+
+def _install_step_timing() -> None:
+    """Diagnostic only (VLLM_TBCCL_TRACE_STEPS=1): time each worker execute_model step (same-process clock) on non-CUDA ranks."""
+    import os
+
+    if os.environ.get("VLLM_TBCCL_TRACE_STEPS", "0") in ("", "0"):
+        return
+    from vllm.v1.worker.gpu_worker import Worker
+
+    if getattr(Worker, "_tbccl_timed", False):
+        return
+    orig = Worker.execute_model
+
+    def wrapped(self, *a, **k):
+        t0 = diag.now_ns()
+        try:
+            return orig(self, *a, **k)
+        finally:
+            diag.record("step_execute", 0, (0,), "n/a", t0, diag.now_ns())
+
+    Worker.execute_model = wrapped
+    Worker._tbccl_timed = True

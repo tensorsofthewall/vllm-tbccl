@@ -23,7 +23,7 @@ def record(op: str, nbytes: int, shape, dtype, t_entry_ns: int, t_done_ns: int, 
     with _lock:
         _events.append({"op": op, "bytes": int(nbytes), "shape": list(shape), "dtype": str(dtype),
                         "entry_ns": t_entry_ns, "done_ns": t_done_ns, **extra})
-        flush = len(_events) % 16 == 0
+        flush = len(_events) % 128 == 0 or os.environ.get("VLLM_TBCCL_TRACE_EVERY", "0") not in ("", "0")
     if flush:  # worker processes are often terminated without running atexit; keep the file current
         dump()
 
