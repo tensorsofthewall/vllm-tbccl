@@ -23,5 +23,7 @@ Heterogeneous-platform blockers found and resolved are tabulated in `phase46_res
 ## Dual backend (Phase 47)
 `VLLM_TBCCL_BACKEND=auto|torch|metal`. torch: vllm-tbccl owns the CUDA/CPU platform (Phase 46 path). metal: vllm-metal owns `MetalPlatform`; vllm-tbccl declines as a platform plugin and attaches through
 vllm-metal's generic hooks (`VLLM_METAL_PP_TRANSPORT_CLS=vllm_tbccl.backends.metal.TBCCLMetalPipelineTransport`, `VLLM_METAL_DIST_BACKEND=tbccl`) plus vLLM's control-group hook.
-MLX array -> evaluated -> zero-copy CPU torch alias -> ProcessGroupTBCCL; toward an upstream vLLM peer the transport speaks vLLM's tensor-dict wire and applies the Llama-family boundary codec
-(`hidden_states + residual` <-> raw stream, request-row permutation). Linux installs need neither mlx nor vllm-metal. See `phase47_vllm_metal_audit.md`, `phase47_results.md`.
+MLX array -> evaluated -> zero-copy CPU torch alias -> ProcessGroupTBCCL; toward an upstream vLLM peer the transport speaks vLLM's tensor-dict wire and applies the per-architecture boundary codec
+(`hidden_states + residual` <-> raw stream, request-row permutation; allowlist: Llama, Qwen3). Linux installs need neither mlx nor vllm-metal. See `phase47_vllm_metal_audit.md`, `phase47_results.md`.
+
+Phase 48 additions: `backends/codecs.py` (explicit codec allowlist, proven by `tools/split_parity.py`), an optional decode-shape receive-buffer pool (`VLLM_TBCCL_RECV_POOL`, off by default), and in-memory tracing with an off-path dump thread (`diagnostics.py`). See `phase48_results.md`, `phase48_qwen3_boundary_audit.md`, `phase48_tp2_audit.md`.
