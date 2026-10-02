@@ -8,14 +8,15 @@ No NumPy staging, no bytes copy, no mx.distributed ring. The wire format is exac
 the activation anyway); ``recv`` returns the very MLX array whose storage TBCCL wrote into. Imports of mlx / vllm_metal are lazy so
 importing vllm_tbccl on Linux never needs them.
 """
+import os
+
 import torch
 import torch.distributed as dist
-
-import os
 
 from .. import diagnostics as diag
 from ..peer import peer_kind, publish_kind
 from ..wire import recv_object, send_object
+from .codecs import codec_for
 
 
 def _csum(t) -> int | None:
@@ -49,6 +50,18 @@ class TBCCLMetalPipelineTransport:
         install_step_timing()
         self._perm = None          # per-step row permutation toward an upstream peer (None = identity)
         self._inv = None
+        self._codec = None
+
+    @property
+    def codec(self):
+        if self._codec is None:
+            arch = os.environ.get("VLLM_TBCCL_ARCHITECTURE")
+            if not arch:
+                raise RuntimeError(
+                    "vllm-tbccl: the model architecture is unknown to the Metal pipeline transport; start with `vllm serve <local model dir>` "
+                    "or set VLLM_TBCCL_ARCHITECTURE (e.g. Qwen3ForCausalLM)")
+            self._codec = codec_for([arch])
+        return self._codec
 
     def _alias(self, x):
         from vllm_metal.pytorch_backend.tensor_bridge import mlx_to_torch
@@ -102,7 +115,7 @@ class TBCCLMetalPipelineTransport:
     def close(self) -> None:
         return None
 
-    # ---- Llama-family boundary codec for an UPSTREAM vLLM peer (CUDA or CPU) -------------------------------------------------
+    # ---- boundary codec for an UPSTREAM vLLM peer (CUDA or CPU); the per-architecture algebra lives in codecs.py ---------------
     # Upstream non-last stage output: IntermediateTensors{hidden_states, residual} where the true residual stream is
     # x = hidden_states + residual (the next layer's fused add+RMSNorm computes exactly that sum). vllm-metal's stage boundary is x itself.
     #   upstream -> metal:  x = hidden_states + residual            (one bf16 add on Metal; identical to what the next upstream layer does)
@@ -131,10 +144,11 @@ class TBCCLMetalPipelineTransport:
             zeros = mx.zeros(shape, dtype=x.dtype)
             mx.eval(zeros)
             self._zeros[key] = zeros
-        meta = [(k, TensorMetadata(self.peer_kind, tdt, torch.Size(shape))) for k in ("hidden_states", "residual")]
+        parts = self.codec.from_metal(x, zeros)
+        meta = [(k, TensorMetadata(self.peer_kind, tdt, torch.Size(shape))) for k in self.codec.keys]
         g = self._ranks[dst]
         send_object(meta, g, self._cpu_group)
-        xa, za = self._alias(x), self._alias(zeros)
+        xa, za = (self._alias(parts[k]) for k in self.codec.keys)
         t_alias = diag.now_ns()
         cs = _csum(xa)
         dist.send(xa, dst=g, group=self._group)
@@ -151,9 +165,9 @@ class TBCCLMetalPipelineTransport:
         g = self._ranks[src]
         meta = recv_object(g, self._cpu_group)
         names = [k for k, _ in meta]
-        if sorted(names) != ["hidden_states", "residual"]:
+        if sorted(names) != sorted(self.codec.keys):
             raise NotImplementedError(
-                f"vllm-tbccl: the Llama-family boundary codec expects IntermediateTensors {{hidden_states, residual}}; peer sent {names}")
+                f"vllm-tbccl: the {self.codec.name} boundary codec expects IntermediateTensors {list(self.codec.keys)}; peer sent {names}")
         tdt = self._torch_dtype(dtype)
         got = {}
         t_meta = diag.now_ns()
@@ -168,7 +182,7 @@ class TBCCLMetalPipelineTransport:
             got[key] = m
         t_recv = diag.now_ns()
         cs = _csum(self._alias(got["hidden_states"]))
-        x = got["hidden_states"] + got["residual"]
+        x = self.codec.to_metal(got)
         if self._perm is not None:
             x = self._take(x, self._perm)       # upstream row order -> this stage's packed order
         mx.eval(x)
