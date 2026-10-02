@@ -14,6 +14,7 @@ import os
 import time
 
 import torch
+import torch.distributed as dist
 
 import torch_tbccl
 from vllm.config import VllmConfig, set_current_vllm_config
@@ -39,7 +40,7 @@ with set_current_vllm_config(VllmConfig()):
     dev = pp.device
     print(f"rank {rank}: platform={type(current_platform).__name__} device={dev} dist_backend={current_platform.dist_backend} "
           f"comm={type(pp.device_communicator).__name__} peer_device_type={getattr(pp.device_communicator, 'peer_device_type', None)} "
-          f"custom_send_recv={pp.use_cpu_custom_send_recv}", flush=True)
+          f"custom_send_recv={pp.use_cpu_custom_send_recv} cpu_group_backend={dist.get_backend(pp.cpu_group)}", flush=True)
     assert type(pp.device_communicator).__name__ == "TBCCLDeviceCommunicator"
     assert not any("nccl" in k.lower() for k in type(pp.device_communicator).__dict__), "no NCCL objects"
     peer = 1 - rank
