@@ -51,6 +51,27 @@ class TBCCLMetalPipelineTransport:
         self._perm = None          # per-step row permutation toward an upstream peer (None = identity)
         self._inv = None
         self._codec = None
+        # Receive-buffer pool (VLLM_TBCCL_RECV_POOL=1, off by default): decode-sized upstream receives reuse one MLX buffer per
+        # (tensor, shape, dtype) instead of paying mx.zeros + mx.eval per tensor per step (~1.3 ms measured in Phase 48).
+        self._pool_on = os.environ.get("VLLM_TBCCL_RECV_POOL", "0") not in ("", "0")
+        self._pool_max_rows = int(os.environ.get("VLLM_TBCCL_RECV_POOL_MAX_ROWS", "64"))
+        self._pool = {}
+
+    def _recv_buffer(self, key, shape, dtype):
+        """A zero-initialized MLX buffer to receive into. Pooled buffers are only valid because _recv_upstream evaluates the
+        add that consumes both of them before it returns, so a buffer is never read after the next receive overwrites it."""
+        import mlx.core as mx
+
+        if self._pool_on and shape[0] <= self._pool_max_rows:
+            buf = self._pool.get((key, shape, str(dtype)))
+            if buf is None:
+                buf = mx.zeros(shape, dtype=dtype)
+                mx.eval(buf)
+                self._pool[(key, shape, str(dtype))] = buf
+            return buf
+        buf = mx.zeros(shape, dtype=dtype)
+        mx.eval(buf)
+        return buf
 
     @property
     def codec(self):
@@ -177,8 +198,7 @@ class TBCCLMetalPipelineTransport:
                 raise RuntimeError(
                     f"vllm-tbccl: boundary mismatch for {key}: peer sent {tuple(md.size)} {md.dtype}, stage expects {tuple(shape)} {tdt}")
             t_a = diag.now_ns()
-            m = mx.zeros(shape, dtype=dtype)
-            mx.eval(m)
+            m = self._recv_buffer(key, tuple(shape), dtype)
             alias = self._alias(m)
             alloc_ns += diag.now_ns() - t_a
             dist.recv(alias, src=g, group=self._group)
