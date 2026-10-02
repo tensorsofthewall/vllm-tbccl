@@ -21,6 +21,9 @@ def tbccl_platform_plugin() -> str | None:
     if os.environ.get("VLLM_TBCCL_ENABLE", "0") in ("", "0"):
         return None
     import torch_tbccl  # noqa: F401  (registers the "tbccl" c10d backend)
+    from . import diagnostics
+
+    diagnostics.start_pg_trace()
 
     return "vllm_tbccl.platform.TbcclCudaPlatform" if _base_kind() == "cuda" else "vllm_tbccl.platform.TbcclCpuPlatform"
 
