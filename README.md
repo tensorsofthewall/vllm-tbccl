@@ -12,4 +12,11 @@ platform with `dist_backend="tbccl"` and `TBCCLDeviceCommunicator`). `TBCCL_LOCA
 communicator pick its own port pair. `VLLM_TBCCL_TRACE=1` records per-operation diagnostics.
 
 Metal: `VLLM_TBCCL_BACKEND=metal` with vllm-metal installed carries vllm-metal's pipeline activations over TBCCL (zero-copy MLX alias) and can pair with a CUDA or CPU
-upstream-vLLM stage (Llama-family codec). Needs the local vllm-metal commit in `patches/vllm-metal-0001-*.patch` and `scripts/apply_vllm_patch.py`.
+upstream-vLLM stage (boundary codecs: Llama and Qwen3, an explicit allowlist in `vllm_tbccl/backends/codecs.py`; the architecture comes from the local model's `config.json`). Needs the local vllm-metal commit in `patches/vllm-metal-0001-*.patch` and `scripts/apply_vllm_patch.py`.
+
+```sh
+uv venv .venv && . .venv/bin/activate
+uv pip install vllm==0.31.0           # or 0.30.0 for the Metal pairing
+# build and install torch-tbccl against an installed TBCCL prefix, then:
+uv pip install -e .
+```
