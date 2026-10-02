@@ -1,7 +1,9 @@
 """Opt-in (VLLM_TBCCL_TRACE=1) per-operation record of what vLLM actually sends through the TBCCL device group.
 
-Durations are same-process monotonic clocks only; never compare stamps across hosts. Dump with dump() or at exit when
-VLLM_TBCCL_TRACE_FILE is set (one JSON file per process, suffixed with the pid).
+Durations are same-process monotonic clocks only; never compare stamps across hosts. Events are only appended in memory on the
+communication path; a daemon thread writes the file (one JSON per process, suffixed with the pid) every VLLM_TBCCL_TRACE_PERIOD_S
+(default 5) seconds when VLLM_TBCCL_TRACE_FILE is set, and once more at exit. There is no per-event I/O, and payload checksums are
+only taken by the separate VLLM_TBCCL_CHECKSUM debug mode.
 """
 import atexit
 import json
@@ -23,9 +25,7 @@ def record(op: str, nbytes: int, shape, dtype, t_entry_ns: int, t_done_ns: int, 
     with _lock:
         _events.append({"op": op, "bytes": int(nbytes), "shape": list(shape), "dtype": str(dtype),
                         "entry_ns": t_entry_ns, "done_ns": t_done_ns, **extra})
-        flush = len(_events) % 128 == 0 or os.environ.get("VLLM_TBCCL_TRACE_EVERY", "0") not in ("", "0")
-    if flush:  # worker processes are often terminated without running atexit; keep the file current
-        dump()
+    _ensure_dumper()
 
 
 def now_ns() -> int:
@@ -46,6 +46,28 @@ def dump(path: str | None = None) -> None:
 
 
 atexit.register(dump)
+
+_dumper = None
+
+
+def _ensure_dumper() -> None:
+    """Worker processes are often terminated without running atexit, so a daemon thread keeps the file reasonably current."""
+    global _dumper
+    if _dumper is not None or not os.environ.get("VLLM_TBCCL_TRACE_FILE"):
+        return
+    _dumper = True
+    period = float(os.environ.get("VLLM_TBCCL_TRACE_PERIOD_S", "5"))
+
+    def loop():
+        last = -1
+        while True:
+            time.sleep(period)
+            n = len(_events)
+            if n != last:
+                last = n
+                dump()
+
+    threading.Thread(target=loop, daemon=True, name="vllm-tbccl-trace-dump").start()
 
 
 _started = False
