@@ -38,7 +38,7 @@ def events() -> list:
 
 
 def dump(path: str | None = None) -> None:
-    path = path or os.environ.get("VLLM_TBCCL_TRACE_FILE")
+    path = path or (os.path.abspath(os.environ["VLLM_TBCCL_TRACE_FILE"]) if os.environ.get("VLLM_TBCCL_TRACE_FILE") else None)
     if not path:
         return
     with open(f"{path}.{os.getpid()}.json", "w") as fh:
@@ -48,12 +48,17 @@ def dump(path: str | None = None) -> None:
 atexit.register(dump)
 
 
+_started = False
+
+
 def start_pg_trace(period_s: float = 1.0) -> None:
     """Record every ProcessGroupTBCCL operation (torch_tbccl trace) and keep <VLLM_TBCCL_TRACE_FILE>.pg.<pid>.json current
     from a daemon thread (no I/O on the communication path). Covers vLLM's generic send/recv path as well as ours."""
-    path = os.environ.get("VLLM_TBCCL_TRACE_FILE")
-    if not enabled() or not path:
+    global _started
+    path = (os.path.abspath(os.environ["VLLM_TBCCL_TRACE_FILE"]) if os.environ.get("VLLM_TBCCL_TRACE_FILE") else None)
+    if _started or not enabled() or not path:
         return
+    _started = True
     import torch_tbccl
 
     torch_tbccl.trace_set_enabled(True)

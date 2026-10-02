@@ -49,8 +49,11 @@ with set_current_vllm_config(VllmConfig()):
     results = []
 
     def tensors(tokens, seed):
-        g = torch.Generator().manual_seed(seed)
-        return {"hidden_states": torch.randn(tokens, a.hidden, generator=g), "residual": torch.randn(tokens, a.hidden, generator=g)}
+        # arithmetic pattern: torch.randn is not bit-identical between x86 and arm CPUs
+        def pat(k):
+            idx = torch.arange(tokens * a.hidden, dtype=torch.int64)
+            return (((idx * 31 + seed * 17 + k * 101) % 997).to(torch.float32) / 7.0).reshape(tokens, a.hidden)
+        return {"hidden_states": pat(0), "residual": pat(1)}
 
     for tokens in (int(t) for t in a.tokens.split(",")):
         for sender in (0, 1):
