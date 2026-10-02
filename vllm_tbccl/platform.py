@@ -21,6 +21,10 @@ def tbccl_platform_plugin() -> str | None:
     if os.environ.get("VLLM_TBCCL_ENABLE", "0") in ("", "0"):
         return None
     import torch_tbccl  # noqa: F401  (registers the "tbccl" c10d backend)
+
+    # Control groups: gloo does not rendezvous between Linux and macOS PyTorch builds. With scripts/apply_vllm_patch.py applied,
+    # vLLM honors this variable; without the patch it is ignored and gloo is used (fine for same-OS worlds).
+    os.environ.setdefault("VLLM_CPU_GROUP_BACKEND", "tbccl")
     from . import diagnostics
 
     diagnostics.start_pg_trace()
