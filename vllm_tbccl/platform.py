@@ -20,6 +20,18 @@ def _base_kind() -> str:
 def tbccl_platform_plugin() -> str | None:
     if os.environ.get("VLLM_TBCCL_ENABLE", "0") in ("", "0"):
         return None
+    from . import backends
+
+    if backends.select_backend() == "metal":
+        # vllm-metal owns MetalPlatform. Two out-of-tree platform plugins cannot both be active, so DECLINE here and only attach as a
+        # transport provider through vllm-metal's generic hooks.
+        import torch_tbccl  # noqa: F401
+
+        backends.configure_metal_environment()
+        from . import diagnostics
+
+        diagnostics.start_pg_trace()
+        return None
     import torch_tbccl  # noqa: F401  (registers the "tbccl" c10d backend)
 
     # Control groups: gloo does not rendezvous between Linux and macOS PyTorch builds. With scripts/apply_vllm_patch.py applied,
