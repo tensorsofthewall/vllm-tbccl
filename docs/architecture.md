@@ -19,3 +19,9 @@ vLLM model/executor (mp, nnodes=2, PP=2, TP=1)
 Pinned vLLM 0.30.0, mp executor with `--nnodes 2 --headless`, PP=2/TP=1, `VLLM_USE_V2_MODEL_RUNNER=0`, platform plugin `tbccl` (CUDA on Linux, CPU on Mac), device group = control group = `tbccl`.
 vLLM hooks (`scripts/apply_vllm_patch.py`): control-group backend env var, KV-layout intersection, lazy `intermediate_tensors`. Launch: `examples/serve_pp2.sh`, clients `examples/pp_client.py`, `pp_batch.py`.
 Heterogeneous-platform blockers found and resolved are tabulated in `phase46_results.md`; unresolved: TP>1 untested (model head count), FP16/BF16 reductions unsupported by TBCCL.
+
+## Dual backend (Phase 47)
+`VLLM_TBCCL_BACKEND=auto|torch|metal`. torch: vllm-tbccl owns the CUDA/CPU platform (Phase 46 path). metal: vllm-metal owns `MetalPlatform`; vllm-tbccl declines as a platform plugin and attaches through
+vllm-metal's generic hooks (`VLLM_METAL_PP_TRANSPORT_CLS=vllm_tbccl.backends.metal.TBCCLMetalPipelineTransport`, `VLLM_METAL_DIST_BACKEND=tbccl`) plus vLLM's control-group hook.
+MLX array -> evaluated -> zero-copy CPU torch alias -> ProcessGroupTBCCL; toward an upstream vLLM peer the transport speaks vLLM's tensor-dict wire and applies the Llama-family boundary codec
+(`hidden_states + residual` <-> raw stream, request-row permutation). Linux installs need neither mlx nor vllm-metal. See `phase47_vllm_metal_audit.md`, `phase47_results.md`.
