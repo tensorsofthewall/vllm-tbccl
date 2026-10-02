@@ -1,0 +1,60 @@
+--- a/vllm/distributed/parallel_state.py	2026-09-22 09:00:46.000000000 +0400
++++ b/vllm/distributed/parallel_state.py	2026-10-02 13:21:30.083795600 +0400
+@@ -25,6 +25,7 @@
+ 
+ import contextlib
+ import gc
++import os
+ import pickle
+ import weakref
+ from collections import deque, namedtuple
+@@ -504,7 +505,9 @@
+                 # processes through the CPU.
+                 with suppress_stdout():
+                     cpu_group = torch.distributed.new_group(
+-                        ranks, backend="gloo", timeout=timeout
++                        ranks,
++                        backend=os.environ.get("VLLM_CPU_GROUP_BACKEND", "gloo"),
++                        timeout=timeout,
+                     )
+                 if self.rank in ranks:
+                     self.ranks = ranks
+--- a/vllm/v1/attention/backends/utils.py	2026-09-22 09:00:46.000000000 +0400
++++ b/vllm/v1/attention/backends/utils.py	2026-10-02 13:34:49.400613800 +0400
+@@ -277,10 +277,15 @@
+     assert supported_layouts and all(supported_layouts), (
+         "No worker reported supported KV cache layouts."
+     )
+-    assert all(names == supported_layouts[0] for names in supported_layouts[1:]), (
+-        f"Workers disagree on supported KV cache layouts: {supported_layouts}."
+-    )
+-    candidates = [_layout_from_name(name) for name in supported_layouts[0]]
++    # Workers may support different layout sets (e.g. a CUDA and a CPU worker); keep the layouts every worker supports,
++    # in the first worker's preference order. Identical lists behave exactly as before.
++    common = [
++        name
++        for name in supported_layouts[0]
++        if all(name in names for names in supported_layouts[1:])
++    ]
++    assert common, f"No KV cache layout is supported by every worker: {supported_layouts}."
++    candidates = [_layout_from_name(name) for name in common]
+ 
+     # A block-compact layout means the block is densely packed in memory, so any mix of
+     # specs can re-interpret HNC with different sizes as long as the total number of
+--- a/vllm/v1/worker/gpu_model_runner.py	2026-09-22 09:00:46.000000000 +0400
++++ b/vllm/v1/worker/gpu_model_runner.py	2026-10-02 13:37:57.010792100 +0400
+@@ -3379,7 +3379,13 @@
+         intermediate_tensors: IntermediateTensors | None,
+         sync_self: bool,
+     ) -> IntermediateTensors:
+-        assert self.intermediate_tensors is not None
++        if self.intermediate_tensors is None:
++            # Normally created by _dummy_run(); runners that skip profiling/warm-up (e.g. CPU with --enforce-eager) get it here.
++            self.intermediate_tensors = self.model.make_empty_intermediate_tensors(
++                batch_size=self.max_num_tokens,
++                dtype=self.model_config.dtype,
++                device=self.device,
++            )
+ 
+         tp = self.vllm_config.parallel_config.tensor_parallel_size
+         is_rs = is_residual_scattered_for_sp(self.vllm_config, num_tokens)
