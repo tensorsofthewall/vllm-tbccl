@@ -170,14 +170,17 @@ class TBCCLMetalPipelineTransport:
                 f"vllm-tbccl: the {self.codec.name} boundary codec expects IntermediateTensors {list(self.codec.keys)}; peer sent {names}")
         tdt = self._torch_dtype(dtype)
         got = {}
+        alloc_ns = 0
         t_meta = diag.now_ns()
         for key, md in meta:
             if tuple(md.size) != tuple(shape) or md.dtype != tdt:
                 raise RuntimeError(
                     f"vllm-tbccl: boundary mismatch for {key}: peer sent {tuple(md.size)} {md.dtype}, stage expects {tuple(shape)} {tdt}")
+            t_a = diag.now_ns()
             m = mx.zeros(shape, dtype=dtype)
             mx.eval(m)
             alias = self._alias(m)
+            alloc_ns += diag.now_ns() - t_a
             dist.recv(alias, src=g, group=self._group)
             got[key] = m
         t_recv = diag.now_ns()
@@ -188,7 +191,7 @@ class TBCCLMetalPipelineTransport:
         mx.eval(x)
         t_done = diag.now_ns()
         diag.record("metal_recv_upstream", 2 * x.nbytes, shape, tdt, t_entry, t_done, csum=cs,
-                    meta_us=(t_meta - t_entry) / 1e3, pg_us=(t_recv - t_meta) / 1e3, add_us=(t_done - t_recv) / 1e3)
+                    meta_us=(t_meta - t_entry) / 1e3, pg_us=(t_recv - t_meta) / 1e3, alloc_us=alloc_ns / 1e3, add_us=(t_done - t_recv) / 1e3)
         return x
 
     # ---- request-row order: upstream vLLM vs vllm-metal ---------------------------------------------------------------------

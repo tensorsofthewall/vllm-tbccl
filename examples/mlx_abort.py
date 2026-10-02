@@ -24,7 +24,9 @@ if side == "cuda":
 import mlx.core as mx
 from vllm_metal.pytorch_backend.tensor_bridge import mlx_to_torch
 
-m = mx.arange(1 << 16, dtype=mx.float32); mx.eval(m)
+# RAW_ABORT_SHAPE e.g. "512,1024" with RAW_ABORT_DTYPE=bfloat16 reproduces a Qwen3-0.6B 512-token boundary receive (1 MiB)
+shape = tuple(int(x) for x in os.environ.get("RAW_ABORT_SHAPE", str(1 << 16)).split(","))
+m = mx.ones(shape, dtype=getattr(mx, os.environ.get("RAW_ABORT_DTYPE", "float32"))); mx.eval(m)
 alias = mlx_to_torch(m, device="cpu")
 w = dist.irecv(alias, src=1 - rank)
 time.sleep(0.5)
@@ -40,8 +42,8 @@ except RuntimeError as e:
     print(f"mlx side: recv Work failed: {str(e).splitlines()[0][:120]}", flush=True)
     rc = 0
 y = m + 1; mx.eval(y)                                  # MLX array still fully usable after the abort
-assert y.shape == (1 << 16,) and y[5].item() == 6.0 or True
-print("mlx array valid after abort:", float(y[5].item()), flush=True)
+assert y.shape == shape and float(y.reshape(-1)[5].item()) == 2.0, "array corrupted after abort"
+print("mlx array valid after abort (shape %s, ones+1 == 2.0)" % (shape,), flush=True)
 store.set("release", "1")
 store.wait(["peer_done"], datetime.timedelta(seconds=60))
 print("mlx side ok" if rc == 0 else "mlx side FAILED", flush=True)
