@@ -43,3 +43,30 @@ def configure_metal_environment() -> None:
     os.environ.setdefault("VLLM_CPU_GROUP_BACKEND", "tbccl")       # vLLM control groups (needs scripts/apply_vllm_patch.py)
     os.environ.setdefault("VLLM_METAL_DIST_BACKEND", "tbccl")      # vllm-metal worker's WORLD/device groups
     os.environ.setdefault("VLLM_METAL_PP_TRANSPORT_CLS", METAL_TRANSPORT_CLS)
+    _export_architecture()
+
+
+def _model_dir_from_argv():
+    """The model directory of a ``vllm serve <model>`` / ``--model <model>`` command line, if it is a local directory."""
+    argv = sys.argv
+    cand = []
+    if "--model" in argv and argv.index("--model") + 1 < len(argv):
+        cand.append(argv[argv.index("--model") + 1])
+    if "serve" in argv and argv.index("serve") + 1 < len(argv):
+        cand.append(argv[argv.index("serve") + 1])
+    return next((c for c in cand if os.path.isfile(os.path.join(c, "config.json"))), None)
+
+
+def _export_architecture() -> None:
+    """vllm-metal's pipeline send/recv runs outside any vLLM config context, so the boundary codec learns the model architecture
+    from the environment: exported here in the parent process (workers inherit it) from the local model's config.json."""
+    if os.environ.get("VLLM_TBCCL_ARCHITECTURE"):
+        return
+    model = _model_dir_from_argv()
+    if model is None:
+        return
+    import json
+
+    archs = json.load(open(os.path.join(model, "config.json"))).get("architectures") or []
+    if archs:
+        os.environ["VLLM_TBCCL_ARCHITECTURE"] = archs[0]
