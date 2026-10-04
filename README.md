@@ -16,3 +16,6 @@ upstream-vLLM stage (boundary codecs: Llama and Qwen3, an explicit allowlist in 
 
 Phase 48 (Qwen3-0.6B, `docs/phase48_results.md`): heterogeneous PP performance study. Layer split with `VLLM_PP_LAYER_PARTITION=<stage0>,<stage1>` on both hosts (no code change); `VLLM_TBCCL_RECV_POOL=1` opt-in receive-buffer reuse for
 decode-sized Metal receives; `VLLM_TBCCL_ARCHITECTURE` overrides the codec's architecture detection. Benchmark and launch scripts are in `scripts/p48_*.sh` (they require `PHASE48_MODEL_LINUX` / `PHASE48_MODEL_MAC` and never download a model).
+
+Compatibility (after Phases 49-53): no change was needed for TBCCL 0.4 (N-rank algorithms) or 0.5.0 (nonblocking submission, structured errors, C ABI); the test suite still passes against the
+Phase 52 install. This integration is 2-rank only. See `AGENTS.md` for rules; exo's pipeline integration (Phase 53) is a separate project, `../exo-tbccl`.
