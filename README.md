@@ -20,3 +20,6 @@ uv pip install vllm==0.31.0           # or 0.30.0 for the Metal pairing
 # build and install torch-tbccl against an installed TBCCL prefix, then:
 uv pip install -e .
 ```
+
+Compatibility: no change was needed for TBCCL 0.4 (N-rank algorithms) or 0.5.0 (nonblocking submission, structured errors, C ABI); the test suite still passes against the
+TBCCL 0.5.0 install. This integration is 2-rank only. exo's pipeline integration is a separate project, `../exo-tbccl`.
