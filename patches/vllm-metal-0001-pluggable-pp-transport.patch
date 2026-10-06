@@ -1,12 +1,13 @@
-From 98232c1d5db81c28f3e612300c5a9dd7317f80d1 Mon Sep 17 00:00:00 2001
+From 8a65a06b114915d32897c222b26be69e6204d545 Mon Sep 17 00:00:00 2001
 From: Sandesh Bharadwaj <34365552+tensorsofthewall@users.noreply.github.com>
-Date: Fri, 2 Oct 2026 17:34:12 +0400
+Date: Tue, 6 Oct 2026 16:42:14 +0400
 Subject: [PATCH] Make pipeline-parallel transport pluggable
 
 Add a PipelineTransport protocol and a default MlxRingPipelineTransport that wraps the
 existing mx.distributed ring (default behavior unchanged). VLLM_METAL_PP_TRANSPORT_CLS
 selects another transport class by qualname; VLLM_METAL_DIST_BACKEND (default gloo)
-selects the torch.distributed backend of the worker's control groups.
+selects the torch.distributed backend of the worker's control groups. An optional
+begin_step hook tells the transport the packed row layout of each step.
 ---
  tests/test_pipeline_transport.py   | 135 +++++++++++++++++++++++++++++
  vllm_metal/distributed/__init__.py |   4 +
@@ -332,19 +333,19 @@ index d2600a1..c721c58 100644
  
  class PipelinedModel:
 diff --git a/vllm_metal/envs.py b/vllm_metal/envs.py
-index f0a880e..0c0415f 100644
+index 56d6a67..188c779 100644
 --- a/vllm_metal/envs.py
 +++ b/vllm_metal/envs.py
-@@ -128,6 +128,8 @@ if TYPE_CHECKING:
+@@ -129,6 +129,8 @@ if TYPE_CHECKING:
      VLLM_METAL_BUILD_FROM_SOURCE: bool = False
      VLLM_METAL_VISIBLE_DEVICES: str | None = None
      VLLM_METAL_RING_BASE_PORT: int = 32323
 +    VLLM_METAL_PP_TRANSPORT_CLS: str | None = None
 +    VLLM_METAL_DIST_BACKEND: str = "gloo"
+     VLLM_METAL_KV_COMMIT_PROBE: bool = True
  
  environment_variables: dict[str, Callable[[], Any]] = {
-     # MLX device type: "gpu" (default) or "cpu".
-@@ -234,6 +236,14 @@ environment_variables: dict[str, Callable[[], Any]] = {
+@@ -241,6 +243,14 @@ environment_variables: dict[str, Callable[[], Any]] = {
          maximum=65535,
          note=" (the user-port range)",
      ),
@@ -356,14 +357,14 @@ index f0a880e..0c0415f 100644
 +    # torch.distributed backend for vLLM's own groups on the Metal worker (control
 +    # plane). Default "gloo", unchanged; a pluggable transport may need another.
 +    "VLLM_METAL_DIST_BACKEND": lambda: os.getenv("VLLM_METAL_DIST_BACKEND", "gloo") or "gloo",
- }
- 
- 
+     # Startup commit probe for the lazily allocated KV pool (default on).
+     # The pool is not backed until a request writes a block, so a pool the
+     # machine cannot hold is otherwise discovered mid-generation, as a swap
 diff --git a/vllm_metal/v1/model_runner.py b/vllm_metal/v1/model_runner.py
-index fe88e21..0c60c30 100644
+index e13b0eb..5bd7c63 100644
 --- a/vllm_metal/v1/model_runner.py
 +++ b/vllm_metal/v1/model_runner.py
-@@ -1395,6 +1395,16 @@ class MetalModelRunner:
+@@ -1554,6 +1554,16 @@ class MetalModelRunner:
                  # other stage hands its raw hidden state to pipeline_send, whose
                  # lazy op is forced by the async_eval below.
                  assert self._pp_model is not None
@@ -381,10 +382,10 @@ index fe88e21..0c60c30 100644
                  if self.pp.is_last:
                      logits = self._extract_logits(stage_output)
 diff --git a/vllm_metal/v1/worker.py b/vllm_metal/v1/worker.py
-index 72820e4..2647f29 100644
+index 72590a7..39f83a7 100644
 --- a/vllm_metal/v1/worker.py
 +++ b/vllm_metal/v1/worker.py
-@@ -29,6 +29,7 @@ from vllm.v1.worker.worker_base import CompilationTimes, WorkerBase
+@@ -39,6 +39,7 @@ from vllm.v1.worker.worker_base import CompilationTimes, WorkerBase
  
  from vllm_metal.attention.caches.placement import KV_CACHE_LAYOUT
  from vllm_metal.config import get_config
@@ -392,7 +393,7 @@ index 72820e4..2647f29 100644
  from vllm_metal.distributed import PipelineGroup
  from vllm_metal.platform import MetalPlatform
  from vllm_metal.utils import set_wired_limit
-@@ -55,7 +56,7 @@ def init_worker_distributed_environment(
+@@ -65,7 +66,7 @@ def init_worker_distributed_environment(
          rank,
          distributed_init_method,
          local_rank,
@@ -401,7 +402,7 @@ index 72820e4..2647f29 100644
      )
  
      ensure_model_parallel_initialized(
-@@ -158,9 +159,15 @@ class MetalWorker(WorkerBase):
+@@ -168,9 +169,15 @@ class MetalWorker(WorkerBase):
              import torch.distributed as dist
              from vllm.utils.network_utils import get_ip
  

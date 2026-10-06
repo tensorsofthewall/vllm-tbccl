@@ -1,5 +1,6 @@
 """Plugin discovery, platform registration, supported-version tuple and the scope of the control-group backend wrapper (vLLM 0.31.0)."""
 import importlib.metadata as md
+import importlib.util
 import os
 import subprocess
 import sys
@@ -21,6 +22,10 @@ def test_plugin_is_inert_unless_enabled():
     assert out.stdout.strip().splitlines()[-1] == "None", out.stderr[-500:]
 
 
+HAS_METAL = importlib.util.find_spec("vllm_metal") is not None
+
+
+@pytest.mark.skipif(HAS_METAL, reason="vllm-metal installed: it owns the platform (see test_metal_platform_stays_owner_when_both_plugins_are_installed)")
 def test_platform_selected_by_vllm_discovery_has_tbccl_dist_backend_and_communicator():
     code = ("from vllm.platforms import current_platform as p; print(type(p).__name__, p.dist_backend, p.get_device_communicator_cls())")
     env = dict(os.environ, VLLM_TBCCL_ENABLE="1")
@@ -30,10 +35,23 @@ def test_platform_selected_by_vllm_discovery_has_tbccl_dist_backend_and_communic
     assert last.split()[0] in ("TbcclCudaPlatform", "TbcclCpuPlatform")
 
 
+@pytest.mark.skipif(not HAS_METAL, reason="needs vllm-metal")
+def test_metal_platform_stays_owner_when_both_plugins_are_installed():
+    code = ("from vllm.platforms import current_platform as p; import os; "
+            "print(type(p).__name__, os.environ.get('VLLM_METAL_PP_TRANSPORT_CLS'), os.environ.get('VLLM_METAL_DIST_BACKEND'), os.environ.get('VLLM_CPU_GROUP_BACKEND'))")
+    env = dict(os.environ, VLLM_TBCCL_ENABLE="1", VLLM_TBCCL_BACKEND="metal")
+    for k in ("VLLM_METAL_PP_TRANSPORT_CLS", "VLLM_METAL_DIST_BACKEND", "VLLM_CPU_GROUP_BACKEND"):
+        env.pop(k, None)
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+    assert out.stdout.strip().splitlines()[-1] == "MetalPlatform vllm_tbccl.backends.metal.TBCCLMetalPipelineTransport tbccl tbccl", (out.stdout[-400:], out.stderr[-400:])
+    off = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env={k: v for k, v in env.items() if k != "VLLM_TBCCL_ENABLE"})
+    assert off.stdout.strip().splitlines()[-1] == "MetalPlatform None None None", (off.stdout[-400:], off.stderr[-400:])
+
+
 def test_supported_vllm_tuple_is_declared():
     from vllm_tbccl import platform
 
-    assert platform.SUPPORTED_VLLM == ("0.31.0",)
+    assert platform.SUPPORTED_VLLM == ("0.30.0", "0.31.0")
 
 
 def _record(monkeypatch):

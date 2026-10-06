@@ -9,7 +9,7 @@ import os
 import sys
 
 # vLLM versions this package was validated against. Other versions are used at the user's risk and warn once.
-SUPPORTED_VLLM = ("0.31.0",)
+SUPPORTED_VLLM = ("0.30.0", "0.31.0")
 
 
 def _check_vllm_version() -> None:
@@ -67,7 +67,9 @@ def tbccl_platform_plugin() -> str | None:
         # transport provider through vllm-metal's generic hooks.
         import torch_tbccl  # noqa: F401
 
+        _check_vllm_version()
         backends.configure_metal_environment()
+        install_cpu_group_backend()
         from . import diagnostics
 
         diagnostics.start_pg_trace()
