@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-tbccl"
-version = "0.1.0.dev0"
+version = "0.2.0.dev0"
 description = "Out-of-tree vLLM integration: route vLLM device-group communication through torch-tbccl (ProcessGroupTBCCL)"
 requires-python = ">=3.10"
 dependencies = ["torch", "vllm", "torch-tbccl"]

@@ -15,7 +15,7 @@ if [ $NET = tb ]; then LIP=192.168.3.2; MIP=192.168.3.1; else LIP=192.168.0.121;
 if [ $ORDER = macfirst ]; then MN=0; LN=1; MADDR=$MIP; API=$MIP; else MN=1; LN=0; MADDR=$LIP; API=$LIP; fi
 PORT=$((29600 + RANDOM % 90)); echo $PORT > results/${TAG}.port
 MODEL_L=${MODEL_L:-$HOME/models/Qwen3-0.6B}; MODEL_M=${MODEL_M:-'~/models/Qwen3-0.6B'}
-COMMON="--dtype ${DTYPE:-bfloat16} --enforce-eager --no-async-scheduling --no-enable-prefix-caching --max-model-len ${MAXLEN:-1024} --pipeline-parallel-size 2 --tensor-parallel-size 1 --nnodes 2 --master-addr $MADDR --master-port $PORT --distributed-executor-backend mp"
+COMMON="--served-model-name pp-model --dtype ${DTYPE:-bfloat16} --enforce-eager --no-async-scheduling --no-enable-prefix-caching --max-model-len ${MAXLEN:-1024} --pipeline-parallel-size 2 --tensor-parallel-size 1 --nnodes 2 --master-addr $MADDR --master-port $PORT --distributed-executor-backend mp"
 lx="--node-rank $LN --gpu-memory-utilization ${GPU_LIN:-0.5}"; mx="--node-rank $MN --gpu-memory-utilization ${GPU_MAC:-0.2}"
 if [ $MN = 0 ]; then mx="$mx --host $MIP --port $API_PORT"; lx="$lx --headless"; else lx="$lx --host $LIP --port $API_PORT"; mx="$mx --headless"; fi
 LIFE=${LIFE:-1500}
