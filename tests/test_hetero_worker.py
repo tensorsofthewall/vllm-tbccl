@@ -11,6 +11,12 @@ def test_cuda_worker_with_a_cpu_peer_reports_the_common_layout():
     assert restrict_layouts(DEFAULT, "cpu", "cuda") == ["LBHNC"]
 
 
+def test_cuda_worker_with_a_metal_peer_reports_the_metal_layout():
+    assert restrict_layouts(DEFAULT, "metal", "cuda") == ["LBNHC"]
+    with pytest.raises(ValueError, match="cuda worker.*metal pipeline peer"):
+        restrict_layouts(["LBHNC"], "metal", "cuda")
+
+
 def test_cpu_worker_and_same_kind_or_unknown_peers_are_unchanged():
     assert restrict_layouts(["LBHNC"], "cuda", "cpu") == ["LBHNC"]
     assert restrict_layouts(DEFAULT, "cuda", "cuda") == DEFAULT

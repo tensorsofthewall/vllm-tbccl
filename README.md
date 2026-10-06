@@ -11,6 +11,10 @@ Enable per process: `VLLM_TBCCL_ENABLE=1` (vLLM then loads the `tbccl` platform 
 platform with `dist_backend="tbccl"` and `TBCCLDeviceCommunicator`). `TBCCL_LOCAL_ENDPOINT=<host>:0` lets every
 communicator pick its own port pair. `VLLM_TBCCL_TRACE=1` records per-operation diagnostics.
 
+Metal + CUDA: an unmodified vLLM **0.30.0** CUDA stage and a current **vllm-metal** (upstream `4e63b19` plus the generic transport seam in `patches/vllm-metal-0001-*.patch`) Metal stage run as one PP=2 pipeline over Thunderbolt;
+vllm-metal's current HEAD does not run on vLLM 0.31.0, so this pairing uses 0.30.0 (`SUPPORTED_VLLM` is `("0.30.0", "0.31.0")`). No vLLM patch is needed.
+Cross-host engines need the Thunderbolt link (the executor's reverse-direction queues are blocked by the LAN firewall), and a dead headless-node worker is not detected by vLLM's leader (use client timeouts).
+
 Metal: `VLLM_TBCCL_BACKEND=metal` with vllm-metal installed carries vllm-metal's pipeline activations over TBCCL (zero-copy MLX alias) and can pair with a CUDA or CPU
 upstream-vLLM stage (boundary codecs: Llama and Qwen3, an explicit allowlist in `vllm_tbccl/backends/codecs.py`; the architecture comes from the local model's `config.json`). Needs the local vllm-metal commit in `patches/vllm-metal-0001-*.patch` and `scripts/apply_vllm_patch.py`.
 
