@@ -13,12 +13,16 @@ SUPPORTED_VLLM = ("0.31.0",)
 
 
 def _check_vllm_version() -> None:
+    """Warn once on an unvalidated vLLM. Uses package metadata, not ``import vllm``: this runs inside vLLM's platform resolution and must not trigger it again."""
+    import importlib.metadata as md
     import warnings
 
-    import vllm
-
-    if vllm.__version__.split("+")[0] not in SUPPORTED_VLLM:
-        warnings.warn(f"vllm-tbccl was validated with vLLM {SUPPORTED_VLLM}; found {vllm.__version__}", RuntimeWarning, stacklevel=2)
+    try:
+        v = md.version("vllm")
+    except md.PackageNotFoundError:
+        return
+    if v.split("+")[0] not in SUPPORTED_VLLM:
+        warnings.warn(f"vllm-tbccl was validated with vLLM {SUPPORTED_VLLM}; found {v}", RuntimeWarning, stacklevel=2)
 
 
 def install_cpu_group_backend() -> None:

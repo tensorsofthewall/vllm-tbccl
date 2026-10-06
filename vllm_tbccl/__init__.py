@@ -3,4 +3,4 @@
 Never links libtbccl and implements no collective algorithm: everything goes through torch.distributed with the
 "tbccl" ProcessGroup backend from torch-tbccl.
 """
-__version__ = "0.1.0.dev0"
+__version__ = "0.2.0.dev0"
