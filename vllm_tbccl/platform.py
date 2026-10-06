@@ -6,6 +6,42 @@ package changes nothing by default). Nothing from the base platforms (workers, a
 VLLM_TBCCL_PLATFORM=cpu|cuda forces the base platform (default: cuda when a CUDA device exists, else cpu).
 """
 import os
+import sys
+
+# vLLM versions this package was validated against. Other versions are used at the user's risk and warn once.
+SUPPORTED_VLLM = ("0.31.0",)
+
+
+def _check_vllm_version() -> None:
+    import warnings
+
+    import vllm
+
+    if vllm.__version__.split("+")[0] not in SUPPORTED_VLLM:
+        warnings.warn(f"vllm-tbccl was validated with vLLM {SUPPORTED_VLLM}; found {vllm.__version__}", RuntimeWarning, stacklevel=2)
+
+
+def install_cpu_group_backend() -> None:
+    """vLLM (0.31.0) creates every GroupCoordinator control group with the hard-coded backend "gloo" (``new_group(ranks, backend="gloo")`` in
+    ``vllm.distributed.parallel_state``), and gloo does not rendezvous between the Linux and macOS PyTorch builds. There is no public vLLM setting for
+    that backend, so this wrapper (installed from the platform plugin, no vLLM source modified) substitutes ``VLLM_CPU_GROUP_BACKEND`` (default
+    "tbccl", i.e. torch-tbccl's ProcessGroup) for exactly those calls: the caller must be vllm.distributed.parallel_state and the requested backend
+    must be "gloo". Every other ``new_group`` call, in vLLM or elsewhere, is untouched. ``VLLM_CPU_GROUP_BACKEND=gloo`` disables it."""
+    import torch.distributed as dist
+
+    backend = os.environ.get("VLLM_CPU_GROUP_BACKEND", "tbccl")
+    if backend == "gloo" or getattr(dist.new_group, "_vllm_tbccl_wrapped", False):
+        return
+    real = dist.new_group
+
+    def new_group(*args, **kwargs):
+        if kwargs.get("backend") == "gloo" and sys._getframe(1).f_globals.get("__name__") == "vllm.distributed.parallel_state":
+            kwargs["backend"] = backend
+        return real(*args, **kwargs)
+
+    new_group._vllm_tbccl_wrapped = True
+    new_group.__wrapped__ = real
+    dist.new_group = new_group
 
 
 def _base_kind() -> str:
@@ -34,9 +70,10 @@ def tbccl_platform_plugin() -> str | None:
         return None
     import torch_tbccl  # noqa: F401  (registers the "tbccl" c10d backend)
 
-    # Control groups: gloo does not rendezvous between Linux and macOS PyTorch builds. With scripts/apply_vllm_patch.py applied,
-    # vLLM honors this variable; without the patch it is ignored and gloo is used (fine for same-OS worlds).
+    _check_vllm_version()
+    # Control groups: gloo does not rendezvous between Linux and macOS PyTorch builds and vLLM hard-codes it (see install_cpu_group_backend).
     os.environ.setdefault("VLLM_CPU_GROUP_BACKEND", "tbccl")
+    install_cpu_group_backend()
     from . import diagnostics
 
     diagnostics.start_pg_trace()
@@ -47,6 +84,13 @@ def tbccl_platform_plugin() -> str | None:
 _COMM = "vllm_tbccl.communicator.TBCCLDeviceCommunicator"
 
 
+def _use_tbccl_worker(vllm_config, default_cls: str, tbccl_cls: str) -> None:
+    """Swap the platform's default worker for its thin TBCCL subclass (heterogeneous KV-layout agreement, CPU PP buffer); a user-chosen worker class is left alone."""
+    pc = vllm_config.parallel_config
+    if pc.worker_cls == default_cls and os.environ.get("VLLM_TBCCL_WORKER", "1") not in ("", "0"):
+        pc.worker_cls = tbccl_cls
+
+
 def __getattr__(name):
     # Define the platform classes lazily: importing vLLM's platform modules at plugin-discovery time would itself try to
     # resolve current_platform.
@@ -55,6 +99,11 @@ def __getattr__(name):
 
         class TbcclCudaPlatform(CudaPlatform):
             dist_backend = "tbccl"
+
+            @classmethod
+            def check_and_update_config(cls, vllm_config) -> None:
+                super().check_and_update_config(vllm_config)
+                _use_tbccl_worker(vllm_config, "vllm.v1.worker.gpu_worker.Worker", "vllm_tbccl.worker_cuda.TbcclGpuWorker")
 
             @classmethod
             def get_device_communicator_cls(cls) -> str:
@@ -68,6 +117,11 @@ def __getattr__(name):
 
         class TbcclCpuPlatform(CpuPlatform):
             dist_backend = "tbccl"
+
+            @classmethod
+            def check_and_update_config(cls, vllm_config) -> None:
+                super().check_and_update_config(vllm_config)
+                _use_tbccl_worker(vllm_config, "vllm.v1.worker.cpu_worker.CPUWorker", "vllm_tbccl.worker_cpu.TbcclCpuWorker")
 
             @classmethod
             def get_device_communicator_cls(cls) -> str:
