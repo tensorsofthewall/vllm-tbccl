@@ -83,3 +83,14 @@ def test_wrapper_is_idempotent_and_can_be_disabled(monkeypatch):
     n = len(seen)
     _call_as("vllm.distributed.parallel_state", None, [0], backend="gloo")
     assert len(seen) == n + 1 and seen[-1][1]["backend"] == "tbccl"   # wrapped exactly once (no double call)
+
+
+def test_every_package_directory_is_listed_in_pyproject():
+    """A normal (non-editable) install must contain every subpackage: an editable install hides a missing one, and vLLM swallows a plugin import error and silently falls back to NCCL."""
+    import pathlib
+    import tomllib
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    listed = set(tomllib.loads((root / "pyproject.toml").read_text())["tool"]["setuptools"]["packages"])
+    found = {".".join(p.parent.relative_to(root).parts) for p in (root / "vllm_tbccl").rglob("__init__.py")}
+    assert found <= listed, f"missing from pyproject packages: {sorted(found - listed)}"
