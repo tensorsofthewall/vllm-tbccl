@@ -40,7 +40,7 @@ def select_backend() -> str:
 
 def configure_metal_environment() -> None:
     """Point vllm-metal's generic hooks at vllm-tbccl (only fills variables the user did not set)."""
-    os.environ.setdefault("VLLM_CPU_GROUP_BACKEND", "tbccl")       # vLLM control groups (needs scripts/apply_vllm_patch.py)
+    os.environ.setdefault("VLLM_CPU_GROUP_BACKEND", "tbccl")       # vLLM control groups (scoped new_group wrapper, platform.install_cpu_group_backend)
     os.environ.setdefault("VLLM_METAL_DIST_BACKEND", "tbccl")      # vllm-metal worker's WORLD/device groups
     os.environ.setdefault("VLLM_METAL_PP_TRANSPORT_CLS", METAL_TRANSPORT_CLS)
     _export_architecture()
