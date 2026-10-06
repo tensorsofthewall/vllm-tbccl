@@ -13,4 +13,4 @@ dependencies = ["torch", "vllm", "torch-tbccl"]
 tbccl = "vllm_tbccl.platform:tbccl_platform_plugin"
 
 [tool.setuptools]
-packages = ["vllm_tbccl"]
+packages = ["vllm_tbccl", "vllm_tbccl.backends"]
