@@ -5,3 +5,4 @@ __pycache__/
 results/
 vllm-src/
 docs/data/phase48/*.safetensors
+.venv-p69/
