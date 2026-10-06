@@ -13,8 +13,9 @@ import os
 
 from vllm.distributed import get_pp_group
 
-# Layouts a device kind can consume, for the kinds that restrict them (None = unrestricted). Source: vLLM 0.31.0 CPU_ATTN.supported_kv_cache_layouts.
-KIND_LAYOUTS = {"cpu": ("LBHNC",)}
+# Layouts a device kind can consume, for the kinds that restrict them (None = unrestricted). Sources: vLLM 0.31.0 CPU_ATTN.supported_kv_cache_layouts;
+# vllm-metal MetalWorker.get_supported_kv_cache_layouts() == [KV_CACHE_LAYOUT] == ["LBNHC"] (vllm_metal/attention/caches/placement.py).
+KIND_LAYOUTS = {"cpu": ("LBHNC",), "metal": ("LBNHC",)}
 
 
 def restrict_layouts(own: list[str], peer_kind: str | None, own_kind: str, override: str | None = None) -> list[str]:

@@ -27,3 +27,5 @@ MLX array -> evaluated -> zero-copy CPU torch alias -> ProcessGroupTBCCL; toward
 (`hidden_states + residual` <-> raw stream, request-row permutation; allowlist: Llama, Qwen3). Linux installs need neither mlx nor vllm-metal. See `phase47_vllm_metal_audit.md`, `phase47_results.md`.
 
 Phase 48 additions: `backends/codecs.py` (explicit codec allowlist, proven by `tools/split_parity.py`), an optional decode-shape receive-buffer pool (`VLLM_TBCCL_RECV_POOL`, off by default), and in-memory tracing with an off-path dump thread (`diagnostics.py`). See `phase48_results.md`, `phase48_qwen3_boundary_audit.md`, `phase48_tp2_audit.md`.
+
+Phase 70: the Metal path is validated against current vllm-metal (`4e63b19`) on vLLM 0.30.0; the Metal branch of the platform plugin now installs the same scoped `new_group` wrapper as the CUDA/CPU branch (no `VLLM_CPU_GROUP_BACKEND` vLLM patch), `KIND_LAYOUTS` carries a `metal` entry, and `docs/phase70_*.md` hold the audits, boundary contract, parity, e2e and failure results.

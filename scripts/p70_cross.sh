@@ -3,7 +3,7 @@
 #   p70_cross.sh up <tag> <lan|tb> <macfirst|linuxfirst>      p70_cross.sh down <tag>
 # lan: 192.168.0.x (only macfirst works: the Linux firewall blocks inbound LAN connections); tb: the Thunderbolt link 192.168.3.x (physical traffic: approval + AER gate).
 # env: EXTRA_ENV (applied to BOTH hosts), EXTRA_ARGS (vllm serve args, both hosts), API_PORT, GPU_LIN, GPU_MAC, MAXLEN, LIFE, DTYPE
-CMD=$1; TAG=$2; R=/mnt/BigChonk/projects/vllm-tbccl; cd $R; mkdir -p results
+CMD=$1; TAG=$2; R=$(cd "$(dirname "$0")/.." && pwd); cd $R; mkdir -p results
 if [ "$CMD" = down ]; then
   [ -f results/${TAG}_linux.pid ] && kill -- -$(cat results/${TAG}_linux.pid) 2>/dev/null
   # macOS: the recorded pid is the exec'd vllm serve (not a process-group leader): terminate its process tree explicitly, never by name
