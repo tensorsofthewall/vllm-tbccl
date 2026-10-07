@@ -1,6 +1,6 @@
 """The real vLLM 0.31.0 serving engine, PP=2 / TP=1, two worker processes on one host, every pipeline tensor and control message through vllm-tbccl / ProcessGroupTBCCL.
 
-Skipped without a local Qwen3-0.6B (``~/models/Qwen3-0.6B`` or ``$PHASE48_MODEL``); nothing is downloaded. Strict deterministic controls are the prompts whose argmax margin
+Skipped without a local Qwen3-0.6B (``~/models/Qwen3-0.6B`` or ``$VLLM_TBCCL_TEST_MODEL``); nothing is downloaded. Strict deterministic controls are the prompts whose argmax margin
 is comfortably non-zero on both devices (tests/fixtures/reference_*.json); near-tie prompts are deliberately not used as correctness controls.
 """
 import concurrent.futures as cf
@@ -17,7 +17,7 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("vllm")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL = os.environ.get("PHASE48_MODEL", os.path.expanduser("~/models/Qwen3-0.6B"))
+MODEL = os.environ.get("VLLM_TBCCL_TEST_MODEL", os.path.expanduser("~/models/Qwen3-0.6B"))
 HAS_CUDA = torch.cuda.is_available()
 pytestmark = pytest.mark.skipif(not os.path.isdir(MODEL), reason="needs the local Qwen3-0.6B (never downloaded)")
 REF = json.load(open(os.path.join(ROOT, "tests/fixtures/reference_vllm031_linux_cuda.json")))
