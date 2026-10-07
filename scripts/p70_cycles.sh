@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 70: N create -> check -> destroy cycles of a cross-host deployment.   p70_cycles.sh <linuxfirst|macfirst> <tag-prefix> [n]
+# N create -> check -> destroy cycles of a cross-host deployment.   p70_cycles.sh <linuxfirst|macfirst> <tag-prefix> [n]
 ORDER=$1; PFX=$2; N=${3:-3}; cd "$(dirname "$0")/.."
 API=$([ $ORDER = linuxfirst ] && echo 192.168.3.2 || echo 192.168.3.1); P=.venv-p70-cuda/bin/python
 for c in $(seq 1 $N); do

@@ -1,4 +1,4 @@
-"""Phase 69: phased client for a running vLLM PP=2 deployment (correctness against the single-rank reference, concurrency, cancellation, timing).
+"""Phased client for a running vLLM PP=2 deployment (correctness against the single-rank reference, concurrency, cancellation, timing).
 
     python tools/p69_client.py --api http://HOST:PORT --model PATH --phase short|medium|sequential|concurrent|cancel --ref docs/data/phase69/ref_linux_cuda.json --out FILE.json
 

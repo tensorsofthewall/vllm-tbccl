@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 69: single-rank vLLM 0.31.0 server (reference generation), no TBCCL involved.  p69_single.sh up <tag> | down <tag>
+# single-rank vLLM 0.31.0 server (reference generation), no TBCCL involved.  p69_single.sh up <tag> | down <tag>
 CMD=$1; TAG=$2; R=$(cd "$(dirname "$0")/.." && pwd); cd $R; mkdir -p results
 SETSID=setsid; command -v setsid >/dev/null || SETSID="perl $(dirname "$0")/_setsid.pl"
 MODEL=${MODEL:-$HOME/phase48_models/Qwen3-0.6B}; API_PORT=${API_PORT:-8168}; PY=${VENV:-$R/.venv-p69}

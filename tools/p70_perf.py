@@ -1,4 +1,4 @@
-"""Phase 70 characterization client: TTFT versus prompt length (max_tokens=1) and decode ms/token, against one running server.
+"""The CUDA+Metal vLLM 0.30 work characterization client: TTFT versus prompt length (max_tokens=1) and decode ms/token, against one running server.
 
     python tools/p70_perf.py --api http://HOST:PORT --model NAME [--lens 16,128,512,900] [--reps 5] [--decode 64]
 

@@ -1,4 +1,4 @@
-"""Phase 69: what travelled through ProcessGroupTBCCL, per session and rank (from VLLM_TBCCL_TRACE files): operations by kind, device group (cuda/cpu tensors) vs control (cpu tensors), bytes."""
+"""What travelled through ProcessGroupTBCCL, per session and rank (from VLLM_TBCCL_TRACE files): operations by kind, device group (cuda/cpu tensors) vs control (cpu tensors), bytes."""
 import collections
 import glob
 import json

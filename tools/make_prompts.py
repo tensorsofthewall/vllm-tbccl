@@ -1,4 +1,4 @@
-"""Build the fixed Phase 48 prompt set: three short text prompts plus exact-length token prompts cut from a local text file."""
+"""Build the fixed the vLLM pipeline-parallel study work prompt set: three short text prompts plus exact-length token prompts cut from a local text file."""
 import argparse
 import json
 

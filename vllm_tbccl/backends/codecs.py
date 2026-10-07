@@ -3,7 +3,7 @@
 Upstream vLLM passes IntermediateTensors{hidden_states, residual} between pipeline stages; the true residual stream is their sum
 (the next layer's fused add+RMSNorm computes exactly that). vllm-metal (mlx-lm models) passes the residual stream itself. A codec states
 that algebra for one model family. Each entry is an explicit allowlist, backed by an offline split-parity proof (tools/split_parity.py
-and docs/phase48_qwen3_boundary_audit.md); an architecture without an entry is rejected rather than assumed to behave like another.
+and); an architecture without an entry is rejected rather than assumed to behave like another.
 """
 
 

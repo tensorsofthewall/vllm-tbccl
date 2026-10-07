@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 70 local (loopback) peer-failure test of a real vLLM PP=2 engine: kill one worker process mid-generation and measure how the engine and the client react.
+# the CUDA+Metal vLLM 0.30 work local (loopback) peer-failure test of a real vLLM PP=2 engine: kill one worker process mid-generation and measure how the engine and the client react.
 #   p70_failure_local.sh <tag> <worker: PP0|PP1>     env as p69_loop.sh (VENV, EXTRA_ENV, MODEL, GPU_UTIL, API_PORT) ; never kills by name pattern, only the recorded worker PID
 # Prints: healthy check, seconds from the kill until the in-flight client request ends (and how), whether the API still answers, seconds until every
 # process of the deployment has exited after a SIGTERM to the leader's process group (bounded by 60 s), leftover process count.

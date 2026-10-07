@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 69 physical session over the Thunderbolt link: real vLLM 0.31.0 serving engine, PP=2/TP=1, Linux CUDA stage + Mac CPU stage, unpatched vLLM + vllm-tbccl.
+# the vLLM 0.31 alignment work physical session over the Thunderbolt link: real vLLM 0.31.0 serving engine, PP=2/TP=1, Linux CUDA stage + Mac CPU stage, unpatched vLLM + vllm-tbccl.
 #   p69_phys.sh <A|B> <tag> [trace]      A = Linux first (API on Linux), B = Mac first (API on the Mac)
 # Phases (AER read after each): short, medium, sequential, concurrent(12), cancel, shutdown. Stops at the first failed phase or when the operator-set AER gate trips:
 #   stop on any new nonfatal/fatal or interface change, or more than ${MAX_NEW_TIMEOUT:-0} new correctable Timeouts since the session start.

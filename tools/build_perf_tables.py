@@ -1,4 +1,4 @@
-"""Markdown performance tables for docs/phase48_results.md, built from docs/data/phase48/perf_single.jsonl and perf_pp.jsonl.
+"""Markdown performance tables for, built from docs/data/phase48/perf_single.jsonl and perf_pp.jsonl.
 
 Single-stage rows come from one interleaved session (cuda/metal/cpu), PP rows from another (cuda_cpu/cuda_metal/metal_cuda); inside a session the
 targets are interleaved round by round, between sessions they are not (state this when quoting a cross-session ratio).

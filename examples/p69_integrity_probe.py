@@ -1,4 +1,4 @@
-"""Phase 69: bit-exact integrity probe of the exact payloads vLLM's pipeline moves (GroupCoordinator level, real vllm-tbccl communicator, no model).
+"""Bit-exact integrity probe of the exact payloads vLLM's pipeline moves (GroupCoordinator level, real vllm-tbccl communicator, no model).
 
     rank 0: VLLM_TBCCL_ENABLE=1 VLLM_TBCCL_PLATFORM=cuda|cpu TBCCL_LOCAL_ENDPOINT=<ip>:0 python p69_integrity_probe.py --init tcp://<rank0 ip>:<port> --rank 0
     rank 1: ... --rank 1

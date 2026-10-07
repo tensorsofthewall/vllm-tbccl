@@ -1,4 +1,4 @@
-"""Phase 70: bit-exact integrity probe of the CUDA <-> Metal stage boundary (real vllm-tbccl on both sides, no model).
+"""Bit-exact integrity probe of the CUDA <-> Metal stage boundary (real vllm-tbccl on both sides, no model).
 
     CUDA host : VLLM_TBCCL_ENABLE=1 TBCCL_LOCAL_ENDPOINT=<ip>:0 python p70_metal_integrity_probe.py --role cuda  --rank R --init tcp://<rank0 ip>:<port>
     Mac       : VLLM_TBCCL_ENABLE=1 VLLM_TBCCL_BACKEND=metal VLLM_TBCCL_ARCHITECTURE=Qwen3ForCausalLM TBCCL_LOCAL_ENDPOINT=<ip>:0 python p70_metal_integrity_probe.py --role metal --rank 1-R ...

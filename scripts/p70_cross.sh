@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 70: PP=2 / TP=1 vLLM 0.30.0 across Linux (CUDA, unmodified vLLM) and Mac (Metal, vllm-metal with the generic pluggable-PP-transport seam) through vllm-tbccl.
+# PP=2 / TP=1 vLLM 0.30.0 across Linux (CUDA, unmodified vLLM) and Mac (Metal, vllm-metal with the generic pluggable-PP-transport seam) through vllm-tbccl.
 #   p70_cross.sh up <tag> <lan|tb> <macfirst|linuxfirst>      p70_cross.sh down <tag>
 # lan: 192.168.0.x (only macfirst works: the Linux firewall blocks inbound LAN connections); tb: the Thunderbolt link 192.168.3.x (physical traffic: approval + AER gate).
 # env: EXTRA_ENV (applied to BOTH hosts), EXTRA_ARGS (vllm serve args, both hosts), API_PORT, GPU_LIN, GPU_MAC, MAXLEN, LIFE, DTYPE

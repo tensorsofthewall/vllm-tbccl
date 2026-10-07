@@ -1,4 +1,4 @@
-"""Phase 69: GroupCoordinator-level lifecycle / failure probe through vllm-tbccl (two local processes, no model).
+"""GroupCoordinator-level lifecycle / failure probe through vllm-tbccl (two local processes, no model).
 
   --mode cycles          repeat (init groups -> exchange -> destroy) N times in the same processes: no leaked threads / file descriptors / RSS growth
   --mode peer_exit_recv  rank 1 exits right after a healthy exchange; rank 0 blocks in recv_tensor_dict(): it must fail with an error within --bound s
@@ -79,7 +79,7 @@ with set_current_vllm_config(VllmConfig()):
             print("new fds:", *[x for x in _fd_listing() if x not in base_fds], sep="\n  ", flush=True)
         print(f"rank {rank} cycles={a.cycles} fd_delta={d[0]} py_thread_delta={d[1]} os_thread_delta={d[2]} rss_delta_mb={d[3]:.1f}", flush=True)
         # vLLM 0.30.0 on macOS leaves 3 descriptors (a kqueue, a handle on "/", /dev/null) per group create/destroy cycle even with libtbccl 0.5.0/0.5.1 and the
-        # same torch-tbccl build that is flat under vLLM 0.31.0 (docs/phase70_failure_lifecycle.md); everything else keeps the strict bound.
+        # same torch-tbccl build that is flat under vLLM 0.31.0; everything else keeps the strict bound.
         import importlib.metadata as md
 
         fd_allow = 3 * a.cycles + 2 if sys.platform == "darwin" and md.version("vllm").split("+")[0] == "0.30.0" else 2

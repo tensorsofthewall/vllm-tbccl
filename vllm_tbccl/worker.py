@@ -1,5 +1,5 @@
 """Shared logic of the thin worker subclasses (``worker_cuda.py`` / ``worker_cpu.py``) for heterogeneous (CUDA + CPU) pipeline stages, installed through vLLM's public ``parallel_config.worker_cls`` extension point by the
-TBCCL platforms (see ``platform.py``). They replace the two compatibility patches that vLLM 0.30.0 needed (Phase 46) without modifying vLLM:
+TBCCL platforms (see ``platform.py``). They replace the two compatibility patches that vLLM 0.30.0 needed (the vLLM pipeline-parallel integration work) without modifying vLLM:
 
 * KV-cache layout agreement. ``resolve_kv_cache_layout`` (engine core) asserts that every worker reports the *same* list of supported layouts. A CUDA FLASH_ATTN worker
   declares no restriction (the default preference list) while the CPU attention backend supports only ``LBHNC``, so a CUDA + CPU pair disagrees. A TBCCL worker whose

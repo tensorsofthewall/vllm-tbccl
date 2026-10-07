@@ -52,7 +52,8 @@ class TBCCLMetalPipelineTransport:
         self._inv = None
         self._codec = None
         # Receive-buffer pool (VLLM_TBCCL_RECV_POOL=1, off by default): decode-sized upstream receives reuse one MLX buffer per
-        # (tensor, shape, dtype) instead of paying mx.zeros + mx.eval per tensor per step (~1.3 ms measured in Phase 48).
+        # (tensor, shape, dtype) instead of paying mx.zeros + mx.eval per tensor per step (~1.3 ms measured in vLLM
+        # pipeline-parallel study).
         self._pool_on = os.environ.get("VLLM_TBCCL_RECV_POOL", "0") not in ("", "0")
         self._pool_max_rows = int(os.environ.get("VLLM_TBCCL_RECV_POOL_MAX_ROWS", "64"))
         self._pool = {}

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 70 physical byte-integrity: CUDA (Linux) <-> Metal (Mac) over Thunderbolt, both rank orders.  p70_phys_integrity.sh <A|B> [iters]
+# the CUDA+Metal vLLM 0.30 work physical byte-integrity: CUDA (Linux) <-> Metal (Mac) over Thunderbolt, both rank orders.  p70_phys_integrity.sh <A|B> [iters]
 #   A: CUDA is PP rank 0 (the Linux host is the init host)   B: Metal is PP rank 0 (the Mac is the init host)
 O=$1; IT=${2:-20}; cd "$(dirname "$0")/.."; PORT=$((29900 + RANDOM % 90)); mkdir -p results docs/data/phase70
 if [ $O = A ]; then CR=0; MR=1; INIT=192.168.3.2; else CR=1; MR=0; INIT=192.168.3.1; fi

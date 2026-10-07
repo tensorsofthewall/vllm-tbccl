@@ -1,6 +1,6 @@
 """TP=2 communication probe: latency of the exact all-reduce / all-gather the audited Qwen3-0.6B TP=2 forward issues, over TBCCL.
 
-Not a TP implementation. The audited per-forward collectives (docs/phase48_tp2_audit.md) are bf16 SUM all-reduces of [T, 1024]
+Not a TP implementation. The audited per-forward collectives are bf16 SUM all-reduces of [T, 1024]
 (1 embedding + 2 per layer x 28 layers = 57) and one logits all-gather of [rows, 75968] -> [rows, 151936]. TBCCL has no bf16 reduction
 datatype yet, so this probe uses the SAME shapes in float32 (2x the bytes) over the existing, tested reduction path, and also the byte-exact
 bf16 payload through all_gather (byte-generic) -- enough to bound the communication cost of TP before any datatype work.

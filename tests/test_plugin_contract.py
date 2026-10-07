@@ -1,4 +1,4 @@
-"""Phase 69: plugin discovery, platform registration, supported-version tuple and the scope of the control-group backend wrapper (vLLM 0.31.0)."""
+"""Plugin discovery, platform registration, supported-version tuple and the scope of the control-group backend wrapper (vLLM 0.31.0)."""
 import importlib.metadata as md
 import importlib.util
 import os

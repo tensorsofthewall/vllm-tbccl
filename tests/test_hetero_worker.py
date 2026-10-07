@@ -1,4 +1,4 @@
-"""Phase 69: the heterogeneous-stage worker subclasses (KV-layout agreement, CPU PP buffer) that replace the old vLLM patches."""
+"""The heterogeneous-stage worker subclasses (KV-layout agreement, CPU PP buffer) that replace the old vLLM patches."""
 import pytest
 
 pytest.importorskip("vllm")

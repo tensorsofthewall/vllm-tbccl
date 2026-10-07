@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 69: PP=2 / TP=1 vLLM 0.31.0 on ONE host (two processes, loopback), Qwen3-0.6B, through vllm-tbccl (plugin only, unpatched vLLM).
+# PP=2 / TP=1 vLLM 0.31.0 on ONE host (two processes, loopback), Qwen3-0.6B, through vllm-tbccl (plugin only, unpatched vLLM).
 #   p69_loop.sh up <tag>   |  p69_loop.sh down <tag>
 # env: MODEL (default ~/phase48_models/Qwen3-0.6B), EXTRA_ENV (VAR=val ... applied to both nodes), EXTRA_ARGS (vllm serve args), API_PORT, GPU_UTIL (0.3)
 CMD=$1; TAG=$2; R=$(cd "$(dirname "$0")/.." && pwd); cd $R; mkdir -p results

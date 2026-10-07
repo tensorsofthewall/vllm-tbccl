@@ -1,4 +1,4 @@
-"""Phase 69: lifecycle and failure behaviour of the vLLM pipeline groups over vllm-tbccl (GroupCoordinator level, two local processes)."""
+"""Lifecycle and failure behaviour of the vLLM pipeline groups over vllm-tbccl (GroupCoordinator level, two local processes)."""
 import pytest
 
 torch = pytest.importorskip("torch")

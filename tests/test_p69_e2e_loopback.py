@@ -1,4 +1,4 @@
-"""Phase 69: the real vLLM 0.31.0 serving engine, PP=2 / TP=1, two worker processes on one host, every pipeline tensor and control message through vllm-tbccl / ProcessGroupTBCCL.
+"""The real vLLM 0.31.0 serving engine, PP=2 / TP=1, two worker processes on one host, every pipeline tensor and control message through vllm-tbccl / ProcessGroupTBCCL.
 
 Skipped without a local Qwen3-0.6B (``~/phase48_models/Qwen3-0.6B`` or ``$PHASE48_MODEL``); nothing is downloaded. Strict deterministic controls are the prompts whose argmax margin
 is comfortably non-zero on both devices (docs/data/phase69/ref_*.json); near-tie prompts are deliberately not used as correctness controls.
@@ -97,7 +97,7 @@ def test_engine_pp2_strict_controls_concurrency_cancellation_and_shutdown():
         api = eng.api
         _assert_strict(api)                                              # short / medium / code prompts, greedy, token-for-token against the single-rank reference
         _assert_strict(api)                                              # sequential repeat
-        jobs = [STRICT[i % 3] for i in range(12)]                        # the Phase 46 12-request concurrency test
+        jobs = [STRICT[i % 3] for i in range(12)]                        # the vLLM pipeline-parallel integration 12-request concurrency test
         with cf.ThreadPoolExecutor(12) as ex:
             res = list(ex.map(lambda n: (n, _complete(api, n)[0]), jobs))
         assert all(toks == REF[n]["tokens"] for n, toks in res), [n for n, t in res if t != REF[n]["tokens"]]
