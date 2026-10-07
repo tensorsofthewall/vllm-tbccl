@@ -1,7 +1,7 @@
 """Deterministic generation client for a vLLM OpenAI-compatible server: greedy completions with top-5 logprobs for a fixed prompt set; records prompt/generated token
 text, per-position chosen logprob and top-2 margin, so strict controls (every margin comfortably non-zero) can be chosen and compared across devices / pipeline layouts.
 
-    python tools/p69_gen.py --api http://127.0.0.1:8168 --model <path> --out FILE.json [--tokens 16] [--prompts all|name,name]
+    python tools/reference_generator.py --api http://127.0.0.1:8168 --model <path> --out FILE.json [--tokens 16] [--prompts all|name,name]
 """
 import argparse
 import json

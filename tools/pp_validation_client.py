@@ -1,6 +1,6 @@
 """Phased client for a running vLLM PP=2 deployment (correctness against the single-rank reference, concurrency, cancellation, timing).
 
-    python tools/p69_client.py --api http://HOST:PORT --model PATH --phase short|medium|sequential|concurrent|cancel --ref docs/data/phase69/ref_linux_cuda.json --out FILE.json
+    python tools/pp_validation_client.py --api http://HOST:PORT --model PATH --phase short|medium|sequential|concurrent|cancel --ref tests/fixtures/reference_vllm031_linux_cuda.json --out FILE.json
 
 Strict controls are the prompts whose argmax margin is comfortably non-zero on both devices (numbers, medium, python); every phase compares generated token strings to the
 single-rank reference token for token. Timing: streamed TTFT / inter-token times (one streamed request per phase), request latency and aggregate throughput under concurrency.
@@ -15,7 +15,7 @@ import time
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import p69_gen  # noqa: E402
+import reference_generator  # noqa: E402
 
 STRICT = ("numbers", "medium", "python")
 
@@ -44,7 +44,7 @@ def check(api, model, ref, names, n=16):
     out = {}
     for name in names:
         t0 = time.monotonic()
-        d = p69_gen.call(api, model, p69_gen.PROMPTS[name], n)
+        d = reference_generator.call(api, model, reference_generator.PROMPTS[name], n)
         lat = time.monotonic() - t0
         toks = d["choices"][0]["logprobs"]["tokens"]
         out[name] = {"match": toks == ref[name]["tokens"], "latency_s": lat, "completion_tokens": d["usage"]["completion_tokens"], "prompt_tokens": d["usage"]["prompt_tokens"], "text": d["choices"][0]["text"][:80]}
@@ -65,7 +65,7 @@ def main():
         res["checks"] = check(a.api, a.model, ref, ["numbers"])
     elif a.phase == "medium":
         res["checks"] = check(a.api, a.model, ref, ["medium", "python"])
-        times, _ = stream(a.api, a.model, p69_gen.PROMPTS["medium"], 16)
+        times, _ = stream(a.api, a.model, reference_generator.PROMPTS["medium"], 16)
         gaps = [b - c for c, b in zip(times, times[1:])]
         res["stream_medium"] = {"ttft_s": times[0], "tpot_median_s": st.median(gaps), "tpot_p95_s": sorted(gaps)[int(0.95 * (len(gaps) - 1))], "tokens": len(times)}
     elif a.phase == "sequential":
@@ -74,12 +74,12 @@ def main():
         jobs = [STRICT[i % 3] for i in range(12)]
         t0 = time.monotonic()
         with cf.ThreadPoolExecutor(12) as ex:
-            outs = list(ex.map(lambda n: (n, p69_gen.call(a.api, a.model, p69_gen.PROMPTS[n], 16)), jobs))
+            outs = list(ex.map(lambda n: (n, reference_generator.call(a.api, a.model, reference_generator.PROMPTS[n], 16)), jobs))
         wall = time.monotonic() - t0
         res["concurrent"] = {"requests": 12, "all_match": all(d["choices"][0]["logprobs"]["tokens"] == ref[n]["tokens"] for n, d in outs), "wall_s": wall,
                              "generated_tokens": sum(d["usage"]["completion_tokens"] for _, d in outs), "tokens_per_s": sum(d["usage"]["completion_tokens"] for _, d in outs) / wall}
     elif a.phase == "cancel":
-        times, _ = stream(a.api, a.model, p69_gen.PROMPTS["count"], 400, drop_after=4)
+        times, _ = stream(a.api, a.model, reference_generator.PROMPTS["count"], 400, drop_after=4)
         time.sleep(3)
         res["cancel"] = {"chunks_before_drop": len(times)}
         res["checks"] = check(a.api, a.model, ref, ["numbers"])

@@ -1,6 +1,6 @@
 """Streaming latency/throughput benchmark with interleaved rounds across targets (A/B/A/B).
 
-  p48_bench.py --target name=url=model [--target ...] --prompt p128 --tokens 32 --conc 4 --rounds 7 --warmup 2
+  pp_bench.py --target name=url=model [--target ...] --prompt p128 --tokens 32 --conc 4 --rounds 7 --warmup 2
 
 A round fires --conc simultaneous requests at ONE target; rounds rotate over the targets so every target sees the same drift. Servers run
 with prefix caching disabled (--no-enable-prefix-caching), so every request is a full prefill of the fixed prompt; --unique-first-token is
@@ -18,7 +18,7 @@ import urllib.parse
 
 p = argparse.ArgumentParser()
 p.add_argument("--target", action="append", required=True, help="name=url=model")
-p.add_argument("--prompts", default="docs/data/phase48/prompts.json")
+p.add_argument("--prompts", default="tests/fixtures/prompts.json")
 p.add_argument("--prompt", required=True, help="prompt name in the prompts file (short0..2, p16, p128, p512)")
 p.add_argument("--tokens", type=int, default=32)
 p.add_argument("--conc", type=int, default=1)

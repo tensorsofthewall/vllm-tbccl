@@ -198,7 +198,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("mode", choices=["cuda-full", "cuda-second", "metal", "compare"])
     p.add_argument("--model")
-    p.add_argument("--prompts", default="docs/data/phase48/prompts.json")
+    p.add_argument("--prompts", default="tests/fixtures/prompts.json")
     p.add_argument("--mem", type=float, default=0.5)
     p.add_argument("--out")
     p.add_argument("--ref", help="metal: the cuda-full safetensors (its .json holds the token sequences)")

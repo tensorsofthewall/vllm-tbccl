@@ -6,7 +6,7 @@ import sys
 
 for tag in sys.argv[1:]:
     print(f"== {tag}")
-    for f in sorted(glob.glob(f"docs/data/phase69/raw/{tag}/{tag}_trace.pg.*.json")):
+    for f in sorted(glob.glob(f"results/physical/{tag}/{tag}_trace.pg.*.json")):
         ev = json.load(open(f))
         if not ev:
             continue
