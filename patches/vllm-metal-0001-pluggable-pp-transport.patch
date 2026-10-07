@@ -1,5 +1,5 @@
 From 8a65a06b114915d32897c222b26be69e6204d545 Mon Sep 17 00:00:00 2001
-From: sandesh-bharadwaj <sndshvnktsh@gmail.com>
+From: Sandesh Bharadwaj <34365552+tensorsofthewall@users.noreply.github.com>
 Date: Tue, 6 Oct 2026 16:42:14 +0400
 Subject: [PATCH] Make pipeline-parallel transport pluggable
 
