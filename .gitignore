@@ -8,3 +8,7 @@ vllm-src/
 
 # Local agent instructions (never committed)
 AGENTS.local.md
+
+# Documentation build
+.venv-docs/
+docs/_build/
