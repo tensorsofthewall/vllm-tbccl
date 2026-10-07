@@ -1,13 +1,25 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-tbccl"
 version = "0.2.0.dev0"
 description = "Out-of-tree vLLM integration: route vLLM device-group communication through torch-tbccl (ProcessGroupTBCCL)"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Sandesh Bharadwaj" }]
 requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+]
 dependencies = ["torch", "vllm", "torch-tbccl"]
+
+[project.urls]
+Repository = "https://github.com/tensorsofthewall/vllm-tbccl"
+Issues = "https://github.com/tensorsofthewall/vllm-tbccl/issues"
 
 [project.entry-points."vllm.platform_plugins"]
 tbccl = "vllm_tbccl.platform:tbccl_platform_plugin"
