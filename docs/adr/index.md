@@ -1,12 +1,8 @@
 # Architecture decision records
 
-Short records of significant design decisions.
-
 ```{toctree}
 :maxdepth: 1
-:hidden:
 
+0001-no-in-place-patches
 template
 ```
-
-No records have been written yet. New records start from the [template](template.md).
