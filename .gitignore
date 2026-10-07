@@ -5,3 +5,6 @@ __pycache__/
 results/
 vllm-src/
 .venv-vllm031/
+
+# Local agent instructions (never committed)
+AGENTS.local.md

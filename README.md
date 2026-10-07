@@ -25,5 +25,31 @@ uv pip install vllm==0.31.0           # or 0.30.0 for the Metal pairing
 uv pip install -e .
 ```
 
-Compatibility: no change was needed for TBCCL 0.4 (N-rank algorithms) or 0.5.0 (nonblocking submission, structured errors, C ABI); the test suite still passes against the
-TBCCL 0.5.0 install. This integration is 2-rank only. exo's pipeline integration is a separate project, `../exo-tbccl`.
+Details, including the vllm-metal patch: [installing](docs/getting-started/install.md).
+
+## Minimal use
+
+```sh
+export VLLM_TBCCL_ENABLE=1                 # vLLM loads the "tbccl" platform plugin
+export TBCCL_LOCAL_ENDPOINT=<host>:0       # each communicator picks its own port pair
+export VLLM_USE_V2_MODEL_RUNNER=0          # on both hosts of a CUDA and CPU pair
+```
+
+`examples/serve_pp2.sh` launches a two-node pipeline-parallel server and `examples/pp_client.py` queries it. Real runs need a local model; no script downloads weights.
+
+## Supported configurations
+
+| Pairing | vLLM | Validated model |
+|---|---|---|
+| Linux CUDA and Mac CPU over Thunderbolt 4 | 0.31.0 | Qwen3-0.6B |
+| Linux CUDA and Mac Metal over Thunderbolt 4 | 0.30.0 + vllm-metal with the patch | Qwen3-0.6B |
+
+The stack is torch-tbccl 0.2.0.dev0, PyTorch 2.13.0, TBCCL C ABI 1 / wire protocol 4. Other versions warn once at plugin activation and nothing is claimed for them. See [compatibility](docs/reference/compatibility.md) and the draft [validation](docs/validation/0.2.0.md).
+
+## Documentation
+
+The documentation is in `docs/` and builds with `make docs`: [getting started](docs/getting-started/index.md), [guides](docs/guides/index.md), [concepts](docs/concepts/index.md), [reference](docs/reference/index.md). Contributing: `CONTRIBUTING.md` and `AGENTS.md`.
+
+## License
+
+No license file has been published yet.
