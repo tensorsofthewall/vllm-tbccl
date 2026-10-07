@@ -22,4 +22,4 @@ Heterogeneous PP performance study (Qwen3-0.6B). Layer split with `VLLM_PP_LAYER
 decode-sized Metal receives; `VLLM_TBCCL_ARCHITECTURE` overrides the codec's architecture detection. Benchmark and launch scripts are in `scripts/p48_*.sh` (they require `PHASE48_MODEL_LINUX` / `PHASE48_MODEL_MAC` and never download a model).
 
 Compatibility: no change was needed for TBCCL 0.4 (N-rank algorithms) or 0.5.0 (nonblocking submission, structured errors, C ABI); the test suite still passes against the
-TBCCL 0.5.0 install. This integration is 2-rank only. exo's pipeline integration is a separate project, `../exo-tbccl`.
+TBCCL 0.5.0 install. This integration is 2-rank only. See `CONTRIBUTING.md` and `AGENTS.md` for development rules; exo's pipeline integration is a separate project, `../exo-tbccl`.

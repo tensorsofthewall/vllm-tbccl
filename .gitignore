@@ -6,3 +6,6 @@ results/
 vllm-src/
 docs/data/phase48/*.safetensors
 .venv-p69/
+
+# Local agent instructions (never committed)
+AGENTS.local.md
