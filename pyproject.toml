@@ -18,6 +18,7 @@ classifiers = [
 dependencies = ["torch", "vllm", "torch-tbccl"]
 
 [project.urls]
+Documentation = "https://vllm-tbccl.tensorsofthewall.com/"
 Repository = "https://github.com/tensorsofthewall/vllm-tbccl"
 Issues = "https://github.com/tensorsofthewall/vllm-tbccl/issues"
 
