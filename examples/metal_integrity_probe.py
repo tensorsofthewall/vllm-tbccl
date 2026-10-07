@@ -1,7 +1,7 @@
 """Bit-exact integrity probe of the CUDA <-> Metal stage boundary (real vllm-tbccl on both sides, no model).
 
-    CUDA host : VLLM_TBCCL_ENABLE=1 TBCCL_LOCAL_ENDPOINT=<ip>:0 python p70_metal_integrity_probe.py --role cuda  --rank R --init tcp://<rank0 ip>:<port>
-    Mac       : VLLM_TBCCL_ENABLE=1 VLLM_TBCCL_BACKEND=metal VLLM_TBCCL_ARCHITECTURE=Qwen3ForCausalLM TBCCL_LOCAL_ENDPOINT=<ip>:0 python p70_metal_integrity_probe.py --role metal --rank 1-R ...
+    CUDA host : VLLM_TBCCL_ENABLE=1 TBCCL_LOCAL_ENDPOINT=<ip>:0 python metal_integrity_probe.py --role cuda  --rank R --init tcp://<rank0 ip>:<port>
+    Mac       : VLLM_TBCCL_ENABLE=1 VLLM_TBCCL_BACKEND=metal VLLM_TBCCL_ARCHITECTURE=Qwen3ForCausalLM TBCCL_LOCAL_ENDPOINT=<ip>:0 python metal_integrity_probe.py --role metal --rank 1-R ...
 
 The CUDA rank is a real vLLM GroupCoordinator (``send_tensor_dict`` / ``recv_tensor_dict`` through TBCCLDeviceCommunicator); the Metal rank is the real
 ``TBCCLMetalPipelineTransport`` (zero-copy MLX alias, boundary codec). Payloads are exact integer patterns (representable in bf16) built on the sending device:

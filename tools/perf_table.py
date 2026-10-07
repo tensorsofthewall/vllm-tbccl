@@ -1,4 +1,4 @@
-"""Print a benchmark JSONL (p48_bench.py output) as a table: one row per (prompt, tokens, conc) x target.
+"""Print a benchmark JSONL (pp_bench.py output) as a table: one row per (prompt, tokens, conc) x target.
 
   perf_table.py file.jsonl [--md] [--filter 'conc=1,tokens=32']
 """

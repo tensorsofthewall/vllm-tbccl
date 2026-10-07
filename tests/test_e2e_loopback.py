@@ -1,7 +1,7 @@
 """The real vLLM 0.31.0 serving engine, PP=2 / TP=1, two worker processes on one host, every pipeline tensor and control message through vllm-tbccl / ProcessGroupTBCCL.
 
-Skipped without a local Qwen3-0.6B (``~/phase48_models/Qwen3-0.6B`` or ``$PHASE48_MODEL``); nothing is downloaded. Strict deterministic controls are the prompts whose argmax margin
-is comfortably non-zero on both devices (docs/data/phase69/ref_*.json); near-tie prompts are deliberately not used as correctness controls.
+Skipped without a local Qwen3-0.6B (``~/models/Qwen3-0.6B`` or ``$PHASE48_MODEL``); nothing is downloaded. Strict deterministic controls are the prompts whose argmax margin
+is comfortably non-zero on both devices (tests/fixtures/reference_*.json); near-tie prompts are deliberately not used as correctness controls.
 """
 import concurrent.futures as cf
 import json
@@ -17,13 +17,13 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("vllm")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL = os.environ.get("PHASE48_MODEL", os.path.expanduser("~/phase48_models/Qwen3-0.6B"))
+MODEL = os.environ.get("PHASE48_MODEL", os.path.expanduser("~/models/Qwen3-0.6B"))
 HAS_CUDA = torch.cuda.is_available()
 pytestmark = pytest.mark.skipif(not os.path.isdir(MODEL), reason="needs the local Qwen3-0.6B (never downloaded)")
-REF = json.load(open(os.path.join(ROOT, "docs/data/phase69/ref_linux_cuda.json")))
+REF = json.load(open(os.path.join(ROOT, "tests/fixtures/reference_vllm031_linux_cuda.json")))
 STRICT = ("numbers", "medium", "python")
 sys.path.insert(0, os.path.join(ROOT, "tools"))
-import p69_gen  # noqa: E402
+import reference_generator  # noqa: E402
 
 
 def _env():
@@ -40,7 +40,7 @@ class Engine:
         self.tag, self.api = tag, "http://127.0.0.1:" + os.environ.get("API_PORT", "8169")
 
     def __enter__(self):
-        r = subprocess.run(["bash", os.path.join(ROOT, "scripts/p69_loop.sh"), "up", self.tag], env=_env(), capture_output=True, text=True, timeout=600)
+        r = subprocess.run(["bash", os.path.join(ROOT, "scripts/loopback_engine.sh"), "up", self.tag], env=_env(), capture_output=True, text=True, timeout=600)
         assert "UP after" in r.stdout, r.stdout + r.stderr + _tail(self.tag)
         return self
 
@@ -57,7 +57,7 @@ class Engine:
 
     def down(self):
         t0 = time.monotonic()
-        subprocess.run(["bash", os.path.join(ROOT, "scripts/p69_loop.sh"), "down", self.tag], env=_env(), timeout=60)
+        subprocess.run(["bash", os.path.join(ROOT, "scripts/loopback_engine.sh"), "down", self.tag], env=_env(), timeout=60)
         deadline = t0 + 60
         while time.monotonic() < deadline and any(_alive_group(p) for p in self.pids()):
             time.sleep(0.2)
@@ -82,7 +82,7 @@ def _tail(tag):
 
 
 def _complete(api, prompt_name, n=16):
-    d = p69_gen.call(api, MODEL, p69_gen.PROMPTS[prompt_name], n)
+    d = reference_generator.call(api, MODEL, reference_generator.PROMPTS[prompt_name], n)
     return d["choices"][0]["logprobs"]["tokens"], d
 
 
@@ -103,7 +103,7 @@ def test_engine_pp2_strict_controls_concurrency_cancellation_and_shutdown():
         assert all(toks == REF[n]["tokens"] for n, toks in res), [n for n, t in res if t != REF[n]["tokens"]]
         # cancellation: abandon a streaming request after a few chunks; the engine must keep serving
         req = urllib.request.Request(api + "/v1/completions", method="POST", headers={"content-type": "application/json"},
-                                     data=json.dumps({"model": MODEL, "prompt": p69_gen.PROMPTS["count"], "max_tokens": 400, "temperature": 0, "stream": True}).encode())
+                                     data=json.dumps({"model": MODEL, "prompt": reference_generator.PROMPTS["count"], "max_tokens": 400, "temperature": 0, "stream": True}).encode())
         r = urllib.request.urlopen(req, timeout=60)
         for i, _line in enumerate(r):
             if i >= 3:

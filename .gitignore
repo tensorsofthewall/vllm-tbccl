@@ -4,8 +4,7 @@ __pycache__/
 .local/
 results/
 vllm-src/
-docs/data/phase48/*.safetensors
-.venv-p69/
+.venv-vllm031/
 
 # Local agent instructions (never committed)
 AGENTS.local.md
