@@ -7,7 +7,7 @@ CMD=$1; TAG=$2; R=$(cd "$(dirname "$0")/.." && pwd); cd $R; mkdir -p results
 if [ "$CMD" = down ]; then
   [ -f results/${TAG}_linux.pid ] && kill -- -$(cat results/${TAG}_linux.pid) 2>/dev/null
   # macOS: the recorded pid is the exec'd vllm serve (not a process-group leader): terminate its process tree explicitly, never by name
-  ssh -o BatchMode=yes tbccl-mac "kt() { for c in \$(pgrep -P \$1); do kt \$c; done; kill \$1 2>/dev/null; }; [ -f /tmp/p70_${TAG}.pid ] && kt \$(cat /tmp/p70_${TAG}.pid); true" </dev/null
+  ssh -o BatchMode=yes tbccl-mac "kt() { for c in \$(pgrep -P \$1); do kt \$c; done; kill \$1 2>/dev/null; }; [ -f /tmp/vllm_tbccl_metal_${TAG}.pid ] && kt \$(cat /tmp/vllm_tbccl_metal_${TAG}.pid); true" </dev/null
   exit 0
 fi
 NET=$3; ORDER=$4; API_PORT=${API_PORT:-8170}

@@ -1,3 +1,7 @@
 # Concepts
 
-Explanations of how the system works and why.
+```{toctree}
+:maxdepth: 1
+
+architecture
+```
