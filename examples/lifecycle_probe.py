@@ -51,7 +51,7 @@ def exchange(pp, n=64):
 
 
 def _fd_listing():
-    """Diagnostic (P70_LSOF=1): the open descriptors, with the fd number stripped so the same object compares equal across cycles."""
+    """Diagnostic (VLLM_TBCCL_PROBE_LSOF=1): the open descriptors, with the fd number stripped so the same object compares equal across cycles."""
     import subprocess
 
     out = subprocess.run(["lsof", "-p", str(os.getpid()), "-nP"], capture_output=True, text=True).stdout.splitlines()[1:]
@@ -66,7 +66,7 @@ with set_current_vllm_config(VllmConfig()):
         ps.destroy_distributed_environment()
         time.sleep(0.5)
         base = (proc.num_fds(), threading.active_count(), proc.num_threads(), proc.memory_info().rss)
-        base_fds = _fd_listing() if os.environ.get("P70_LSOF") else None
+        base_fds = _fd_listing() if os.environ.get("VLLM_TBCCL_PROBE_LSOF") else None
         for c in range(1, a.cycles + 1):
             pp = init(c)
             exchange(pp)
