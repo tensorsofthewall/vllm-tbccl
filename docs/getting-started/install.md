@@ -9,7 +9,11 @@ vllm-tbccl is a vLLM platform plugin. It installs as a separate package into the
 | CUDA node and CPU node | **0.31.0** | validated on a Linux CUDA host and a Mac CPU host over Thunderbolt 4 |
 | CUDA node and Metal node | **0.30.0** | needs [vllm-metal](https://github.com/vllm-project/vllm-metal) and the transport patch in `vllm_tbccl/patches/`; validated on a Linux CUDA host and a Mac Metal host over Thunderbolt 4 |
 
-Both combinations use pipeline parallelism with two stages (`PP=2`, `TP=1`) and two-rank groups. The package version is 0.2.0.dev0 (development; no release published). `SUPPORTED_VLLM` in `vllm_tbccl/platform.py` is `("0.30.0", "0.31.0")`; other vLLM versions warn once when the plugin activates and nothing is claimed for them. See [Compatibility](../reference/compatibility.md).
+```{note}
+**Release candidate (pre-release) instructions.** 0.2.0rc1 wheels are attached to the GitHub pre-release `v0.2.0rc1` and published to TestPyPI. They are for validation, not production use. vllm-tbccl is standalone: it does not need `torch-tbccl`. Into the environment that holds vLLM and the CUDA 13 PyTorch (Linux) or PyTorch (macOS), run `pip install --pre --no-deps -i https://test.pypi.org/simple/ vllm-tbccl==0.2.0rc1` or install the wheel from the release page. The final install commands will replace this note.
+```
+
+Both combinations use pipeline parallelism with two stages (`PP=2`, `TP=1`) and two-rank groups. The package version is 0.2.0rc1 (release candidate; no final release published). `SUPPORTED_VLLM` in `vllm_tbccl/platform.py` is `("0.30.0", "0.31.0")`; other vLLM versions warn once when the plugin activates and nothing is claimed for them. See [Compatibility](../reference/compatibility.md).
 
 vllm-metal's current head does not run on vLLM 0.31.0, so the Metal pairing uses 0.30.0.
 
