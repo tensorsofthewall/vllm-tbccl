@@ -1,0 +1,121 @@
+name: release-artifacts
+
+# Builds, validates and describes the vllm-tbccl release distributions (a py3-none-any wheel and an sdist) from one exact commit. It only uploads GitHub Actions
+# artifacts: no tag, no GitHub Release, no package upload, and no tag trigger.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/release-artifacts.yml"
+      - "tools/build_release.sh"
+      - "tools/inspect_wheel.py"
+      - "tools/release_metadata.py"
+      - "pyproject.toml"
+      - "vllm_tbccl/patches/**"
+
+permissions:
+  contents: read
+
+env:
+  SLIM_IMAGE: python@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c
+
+jobs:
+  build:
+    name: wheel and sdist
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Build, check and inspect twice
+        run: |
+          python -m pip install --quiet "build==1.6.1" "twine==7.0.0" "setuptools==80.9.0" wheel
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          tools/build_release.sh out1
+          tools/build_release.sh out2
+          mkdir -p out && cp out1/*.whl out1/*.tar.gz out/ && cp out1/inspect-wheel.json out1/inspect-sdist.json out/
+          pip freeze > out/build-environment.txt
+          {
+            python tools/release_metadata.py compare out1/*.whl out2/*.whl
+            python tools/release_metadata.py compare out1/*.tar.gz out2/*.tar.gz
+          } | tee out/reproducibility.txt | tee -a "$GITHUB_STEP_SUMMARY"
+          sha256sum out1/* out2/* | sort | head -20
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: out/
+          retention-days: 14
+          if-no-files-found: error
+
+  clean-install:
+    name: clean install (python 3.13, nothing else)
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dl
+      - name: Install the wheel into a bare python:3.13-slim and use it
+        # torch-tbccl and vLLM are not installed here (torch-tbccl is not on a package index before the first release), so this checks the wheel itself: it
+        # installs, imports, ships the patches and reports its metadata. The test suite that needs vLLM runs against the release candidates.
+        run: |
+          mkdir wh && cp dl/*.whl wh/
+          docker run --rm -v "$PWD/wh:/wh:ro" -v "$PWD/tests/test_patches.py:/t/test_patches.py:ro" "$SLIM_IMAGE" bash -c '
+            set -e
+            python -m venv /clean && . /clean/bin/activate
+            pip install -q --no-deps /wh/*.whl pytest
+            cd /tmp
+            python -c "import vllm_tbccl; print(\"imported from\", vllm_tbccl.__file__, vllm_tbccl.__version__)"
+            python -m vllm_tbccl.patches --list
+            python -m vllm_tbccl.patches --path vllm-metal-0001-pluggable-pp-transport.patch
+            pip show vllm-tbccl | grep -E "^(Name|Version|Requires|License)"
+            git --version >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq git >/dev/null)
+            python -m pytest -q -p no:cacheprovider /t/test_patches.py'
+
+  finalize:
+    name: checksums, SBOM and provenance
+    needs: [build, clean-install]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: parts
+      - name: SBOMs and SHA256SUMS
+        run: |
+          python -m pip install --quiet spdx-tools==0.8.5
+          mkdir release
+          cp parts/*.whl parts/*.tar.gz release/
+          EPOCH=$(date -u -d "@$(git log -1 --format=%ct)" +%Y-%m-%dT%H:%M:%SZ)
+          for a in release/*.whl release/*.tar.gz; do
+            python tools/release_metadata.py sbom "$a" --out "$a.spdx.json" --repo vllm-tbccl --commit "$GITHUB_SHA" --epoch "$EPOCH" --homepage https://vllm-tbccl.tensorsofthewall.com/
+            python tools/release_metadata.py check-sbom "$a.spdx.json" "$a"
+          done
+          python tools/release_metadata.py sums release
+          (cd release && sha256sum -c SHA256SUMS)
+          {
+            echo "### vllm-tbccl release distributions for $GITHUB_SHA"
+            echo '| file | bytes | SHA-256 |'; echo '|---|---|---|'
+            (cd release && for f in *.whl *.tar.gz; do echo "| $f | $(stat -c %s "$f") | $(sha256sum "$f" | cut -d' ' -f1) |"; done)
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Attest the artifacts (GitHub build provenance)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release/*
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-artifacts-${{ github.sha }}
+          path: release/
+          retention-days: 14
+          if-no-files-found: error
