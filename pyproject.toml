@@ -26,4 +26,7 @@ Issues = "https://github.com/tensorsofthewall/vllm-tbccl/issues"
 tbccl = "vllm_tbccl.platform:tbccl_platform_plugin"
 
 [tool.setuptools]
-packages = ["vllm_tbccl", "vllm_tbccl.backends"]
+packages = ["vllm_tbccl", "vllm_tbccl.backends", "vllm_tbccl.patches"]
+
+[tool.setuptools.package-data]
+"vllm_tbccl.patches" = ["*.patch"]

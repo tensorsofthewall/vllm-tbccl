@@ -26,6 +26,6 @@ This is a volunteer-maintained project. Reports are acknowledged on a best-effor
 
 ## Scope
 
-This policy covers the vLLM platform plugin and the patch files under patches/. Bugs in the plugin code and in the patch files under patches/ are in scope. Behavior of vLLM, vllm-metal, torch-tbccl or TBCCL themselves should be reported to those projects.
+This policy covers the vLLM platform plugin and the patch files under vllm_tbccl/patches/. Bugs in the plugin code and in the patch files under vllm_tbccl/patches/ are in scope. Behavior of vLLM, vllm-metal, torch-tbccl or TBCCL themselves should be reported to those projects.
 
 The supported deployment assumptions are described in the security model in the documentation: TBCCL assumes trusted peers on a trusted network.

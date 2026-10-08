@@ -8,7 +8,7 @@
 3. v1/worker/gpu_model_runner.py: sync_and_gather_intermediate_tensors() asserted a persistent intermediate-tensor buffer that is only
    created inside _dummy_run(). The CPU model runner skips profile_run()/warm-up under --enforce-eager, so a non-first pipeline stage on
    CPU crashed on its first batch. Allocate it lazily (same call _dummy_run uses).
-See docs/vllm_api_audit.md and patches/*.patch.
+See docs/vllm_api_audit.md and vllm_tbccl/patches/*.patch.
 """
 import pathlib
 import sys

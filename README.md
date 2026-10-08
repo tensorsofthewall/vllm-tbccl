@@ -7,7 +7,7 @@ vllm-tbccl is an out-of-tree [vLLM](https://github.com/vllm-project/vllm) platfo
 ## What you can use it for
 
 - Two-stage pipeline parallelism (`PP=2`, `TP=1`, two-rank groups) between a **CUDA** node and a **CPU** node with vLLM **0.31.0**, unmodified.
-- The same between a **CUDA** node and a **Metal** (Apple GPU) node with vLLM **0.30.0** and vllm-metal plus the transport patch in `patches/`.
+- The same between a **CUDA** node and a **Metal** (Apple GPU) node with vLLM **0.30.0** and vllm-metal plus the transport patch in `vllm_tbccl/patches/`.
 
 ## Install
 

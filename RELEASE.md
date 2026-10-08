@@ -14,7 +14,7 @@ This is the maintainer checklist for releasing vllm-tbccl. It contains no creden
 
 ## Build and inspect artifacts
 
-8. Build the wheel and the source distribution, check that the license file is included and that the patches under `patches/` apply cleanly to the vllm-metal and vLLM revisions the compatibility manifest names, and install the wheel into a clean environment.
+8. Build the wheel and the source distribution, check that the license file is included and that the patches under `vllm_tbccl/patches/` apply cleanly to the vllm-metal and vLLM revisions the compatibility manifest names, and install the wheel into a clean environment.
 9. Generate a software bill of materials for each artifact (see below) and compute SHA-256 checksums of every artifact.
 10. Attach provenance (see below).
 

@@ -1,8 +1,8 @@
-"""Inspect a built vllm-tbccl wheel WITHOUT importing it.
+"""Inspect a built vllm-tbccl wheel or sdist WITHOUT importing it.
 
-    python tools/inspect_wheel.py dist/vllm_tbccl-*.whl [--json OUT]
+    python tools/inspect_wheel.py dist/vllm_tbccl-*.whl|dist/vllm_tbccl-*.tar.gz [--json OUT]
 
-Fails (exit 1) on: a missing module or metadata; a missing licence file; a version that disagrees with vllm_tbccl/__init__.py; a platform tag other than py3-none-any; development files (tests, tools,
+Fails (exit 1) on: a missing module or metadata; a missing licence file; a version that disagrees with vllm_tbccl/__init__.py; a platform tag other than py3-none-any; the Metal pairing's vllm-metal patch missing (wheel and sdist); development files (tests, tools,
 docs, examples, sources) or build-machine paths in any member.
 """
 import argparse
@@ -14,7 +14,8 @@ import sys
 import zipfile
 
 MODULE = "vllm_tbccl"
-REQUIRED = ["vllm_tbccl/__init__.py"]
+PATCH = "vllm_tbccl/patches/vllm-metal-0001-pluggable-pp-transport.patch"
+REQUIRED = ["vllm_tbccl/__init__.py", "vllm_tbccl/patches/__init__.py", PATCH]
 NATIVE = False
 SYSTEM_DIRS = ("/usr/lib", "/usr/lib64", "/lib", "/lib64", "/usr/local/lib")
 DEV_PREFIXES = ("tests/", "tools/", "docs/", "examples/", "scripts/", "benchmarks/", ".github/")
@@ -32,12 +33,44 @@ def parse_tags(filename):
     return parts[-3], parts[-2], parts[-1].split(".")
 
 
+def inspect_sdist(path, problems, report):
+    import tarfile
+
+    t = tarfile.open(path)
+    names = [m.name for m in t.getmembers() if m.isfile()]
+    report["members"] = names
+    top = names[0].split("/")[0] if names else ""
+    version = top[len("vllm_tbccl-"):] if top.startswith("vllm_tbccl-") else None
+    for m in ["PKG-INFO", "LICENSE", "pyproject.toml", "README.md"] + REQUIRED:
+        if f"{top}/{m}" not in names:
+            problems.append(f"missing {m}")
+    pkg = t.extractfile(f"{top}/PKG-INFO").read().decode() if f"{top}/PKG-INFO" in names else ""
+    meta_ver = re.search(r"^Version: (.+)$", pkg, re.M)
+    src = re.search(r'__version__ = "([^"]+)"', t.extractfile(f"{top}/vllm_tbccl/__init__.py").read().decode()) if f"{top}/vllm_tbccl/__init__.py" in names else None
+    if not (meta_ver and src and meta_ver.group(1) == src.group(1) == version):
+        problems.append(f"version mismatch: file name {version}, PKG-INFO {meta_ver.group(1) if meta_ver else None}, __init__ {src.group(1) if src else None}")
+    for n in names:
+        rel = n[len(top) + 1:]
+        if rel.startswith((".github/", "scripts/", "docs/", "examples/", "tools/", "benchmarks/", "results/")):
+            problems.append(f"development file in the sdist: {rel}")
+        private = re.findall(rb"/(?:home|Users|mnt|tmp)/[\w.\-]+", t.extractfile(n).read())
+        if private:
+            problems.append(f"{rel} contains private or build paths: {sorted(set(x.decode() for x in private))}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("wheel")
     ap.add_argument("--json", default=None)
     a = ap.parse_args()
     problems, report = [], {"wheel": os.path.basename(a.wheel)}
+    if a.wheel.endswith(".tar.gz"):
+        inspect_sdist(a.wheel, problems, report)
+        report["problems"] = problems
+        print(json.dumps(report, indent=1))
+        if a.json:
+            json.dump(report, open(a.json, "w"), indent=1)
+        sys.exit(1 if problems else 0)
     z = zipfile.ZipFile(a.wheel)
     names = z.namelist()
     report["members"] = names

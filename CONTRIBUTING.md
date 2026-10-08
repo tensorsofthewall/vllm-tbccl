@@ -54,7 +54,7 @@ User-visible changes update the relevant documentation (`README.md` and `docs/`)
 ## Compatibility requirements
 
 - **Supported combinations:** vLLM versions are listed in `README.md` and enforced by `SUPPORTED_VLLM` in `vllm_tbccl/platform.py`. Adding one needs validation evidence.
-- **No in-place patches** to vLLM or vllm-metal; the vllm-metal change is a patch file under `patches/`.
+- **No in-place patches** to vLLM or vllm-metal; the vllm-metal change is a patch file under `vllm_tbccl/patches/`.
 - **Dependencies:** requires `torch-tbccl` and, through it, an installed TBCCL package.
 
 ## AI-assisted contributions
