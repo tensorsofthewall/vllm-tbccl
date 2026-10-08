@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # Guides
 
 ```{toctree}
@@ -5,5 +9,7 @@
 
 pipeline-parallelism
 cuda-metal
+patches
+verify-active
 troubleshooting
 ```
