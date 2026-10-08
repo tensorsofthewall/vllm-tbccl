@@ -66,7 +66,8 @@ jobs:
           docker run --rm -v "$PWD/wh:/wh:ro" -v "$PWD/tests/test_patches.py:/t/test_patches.py:ro" "$SLIM_IMAGE" bash -c '
             set -e
             python -m venv /clean && . /clean/bin/activate
-            pip install -q --no-deps /wh/*.whl pytest
+            pip install -q pytest
+            pip install -q --no-deps /wh/*.whl
             cd /tmp
             python -c "import vllm_tbccl; print(\"imported from\", vllm_tbccl.__file__, vllm_tbccl.__version__)"
             python -m vllm_tbccl.patches --list
