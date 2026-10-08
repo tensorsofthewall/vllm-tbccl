@@ -6,7 +6,7 @@ Contributions are accepted under the same license (Apache-2.0, section 5).
 
 ## Patch files
 
-The directory `patches/` contains two patch files. They are modifications of other projects, both licensed Apache-2.0:
+The directory `vllm_tbccl/patches/` contains two patch files. They are modifications of other projects, both licensed Apache-2.0:
 
 | Patch | Applies to | Upstream license |
 |---|---|---|

@@ -10,7 +10,7 @@ Planned for 0.2.0. This section describes the first planned release and changes 
 
 - A vLLM platform plugin that carries device-group communication over torch-tbccl.
 - Two-stage pipeline parallelism (`PP=2`, `TP=1`) between a CUDA node and a CPU node with vLLM 0.31.0, unmodified.
-- The same between a CUDA node and a Metal node with vLLM 0.30.0 and vllm-metal plus the transport patch in `patches/`.
+- The same between a CUDA node and a Metal node with vLLM 0.30.0 and vllm-metal plus the transport patch in `vllm_tbccl/patches/`.
 
 ### Changed
 
@@ -28,5 +28,5 @@ Planned for 0.2.0. This section describes the first planned release and changes 
 ### Known limitations
 
 - Two-rank groups and `TP=1` only.
-- The Metal pairing needs the patch under `patches/` applied to vllm-metal; it is not part of the installed package.
+- The Metal pairing needs the patch under `vllm_tbccl/patches/` applied to vllm-metal. The patch ships inside the installed package; `python -m vllm_tbccl.patches --path vllm-metal-0001-pluggable-pp-transport.patch` prints its location.
 - Experimental: supported vLLM versions are exactly those listed in the compatibility manifest.

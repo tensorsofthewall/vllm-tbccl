@@ -15,7 +15,7 @@ vLLM (device groups / PP)  ->  vllm-tbccl  ->  torch-tbccl (c10d backend "tbccl"
 | Path | Role |
 |---|---|
 | `vllm_tbccl/` | Platform plugin, device communicator, backends and boundary codecs |
-| `patches/` | The generic pluggable pipeline-transport patch for vllm-metal (`git am` onto a vllm-metal checkout) and a legacy vLLM hook patch |
+| `vllm_tbccl/patches/` | The generic pluggable pipeline-transport patch for vllm-metal (`git am` onto a vllm-metal checkout) and a legacy vLLM hook patch |
 | `tests/`, `examples/`, `tools/`, `scripts/` | Tests, probes and clients, helper tools, launch scripts for multi-host runs |
 
 ## Architecture boundaries

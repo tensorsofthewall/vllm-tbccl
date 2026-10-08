@@ -7,7 +7,7 @@
 | vLLM | 0.31.0 (CUDA and CPU pairing), 0.30.0 (CUDA and Metal pairing); `SUPPORTED_VLLM = ("0.30.0", "0.31.0")` |
 | torch-tbccl | 0.2.0.dev0, with PyTorch 2.13.0 |
 | TBCCL | C ABI 1, wire protocol 4 (through torch-tbccl) |
-| vllm-metal | the upstream commit the patch in `patches/` applies to; needed for the Metal pairing only |
+| vllm-metal | the upstream commit the patch in `vllm_tbccl/patches/` applies to; needed for the Metal pairing only |
 
 ## Validated pairings
 
