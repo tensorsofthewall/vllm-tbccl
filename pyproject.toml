@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-tbccl"
-version = "0.2.0.dev0"
+version = "0.2.0rc1"
 description = "Out-of-tree vLLM integration: vLLM device-group communication over TBCCL through a bundled, private c10d backend"
 readme = "README.md"
 license = "Apache-2.0"

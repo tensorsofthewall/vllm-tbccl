@@ -2,7 +2,7 @@
 
 | | Value |
 |---|---|
-| Package version | 0.2.0.dev0 (development; no release has been published) |
+| Package version | 0.2.0rc1 (release candidate; no final release has been published) |
 | Python | 3.10 or newer (`requires-python`); validated with 3.13 |
 | vLLM | 0.31.0 (CUDA and CPU pairing), 0.30.0 (CUDA and Metal pairing); `SUPPORTED_VLLM = ("0.30.0", "0.31.0")` |
 | PyTorch | 2.13.x (the bundled native module is tied to one torch minor series) |

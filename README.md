@@ -2,7 +2,7 @@
 
 vllm-tbccl is an out-of-tree [vLLM](https://github.com/vllm-project/vllm) platform plugin that carries vLLM's device-group communication, and with vllm-metal also its pipeline activations, over [TBCCL](https://github.com/tensorsofthewall/tbccl) through its own bundled `tbccl` c10d backend. It lets one vLLM pipeline span machines with different accelerators, for example a Linux host with an NVIDIA GPU and a Mac, joined by a direct Thunderbolt 4 link or any TCP network, with no NCCL data path. It is self-contained: the wheel carries a small native c10d backend statically linked to libtbccl's stable C ABI. It owns no transport or algorithm, and it does not use or require torch-tbccl.
 
-> **Status:** development version 0.2.0.dev0, experimental, no release published.
+> **Status:** release candidate **0.2.0rc1** (pre-release, experimental; not production-ready). The final 0.2.0 has not been released. vllm-tbccl is standalone: it bundles its TBCCL backend and does **not** require `torch-tbccl`.
 
 ## What you can use it for
 
