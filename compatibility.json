@@ -24,7 +24,6 @@
   },
   "requires": {
     "tbccl": {
-      "bundled_package": "0.6.0rc1",
       "c_abi": [
         1
       ],
