@@ -6,17 +6,61 @@
     "target_release": "0.2.0",
     "released": false
   },
-  "python": {"requires": ">=3.10", "validated": "3.13"},
+  "python": {
+    "requires": ">=3.13,<3.14",
+    "validated": "3.13"
+  },
   "frameworks": {
-    "vllm": {"supported": ["0.30.0", "0.31.0"]},
-    "torch": {"validated": "2.13.0"}
+    "vllm": {
+      "supported": [
+        "0.30.0",
+        "0.31.0"
+      ]
+    },
+    "torch": {
+      "validated": "2.13.0"
+    }
   },
   "requires": {
-    "torch_tbccl": "0.2.0.dev0",
-    "tbccl": {"c_abi": [1], "wire_protocol": [4]}
+    "tbccl": {
+      "c_abi": [
+        1
+      ],
+      "wire_protocol": [
+        4
+      ]
+    },
+    "torch": ">=2.13,<2.14"
   },
   "validated_configurations": [
-    {"name": "cuda-cpu-thunderbolt", "vllm": "0.31.0", "stages": ["linux-cuda", "macos-cpu"], "parallelism": {"pp": 2, "tp": 1}, "model": "Qwen3-0.6B"},
-    {"name": "cuda-metal-thunderbolt", "vllm": "0.30.0", "stages": ["linux-cuda", "macos-metal"], "parallelism": {"pp": 2, "tp": 1}, "model": "Qwen3-0.6B", "needs": ["vllm-metal with patches/vllm-metal-0001-pluggable-pp-transport.patch"]}
+    {
+      "name": "cuda-cpu-thunderbolt",
+      "vllm": "0.31.0",
+      "stages": [
+        "linux-cuda",
+        "macos-cpu"
+      ],
+      "parallelism": {
+        "pp": 2,
+        "tp": 1
+      },
+      "model": "Qwen3-0.6B"
+    },
+    {
+      "name": "cuda-metal-thunderbolt",
+      "vllm": "0.30.0",
+      "stages": [
+        "linux-cuda",
+        "macos-metal"
+      ],
+      "parallelism": {
+        "pp": 2,
+        "tp": 1
+      },
+      "model": "Qwen3-0.6B",
+      "needs": [
+        "vllm-metal with patches/vllm-metal-0001-pluggable-pp-transport.patch"
+      ]
+    }
   ]
 }

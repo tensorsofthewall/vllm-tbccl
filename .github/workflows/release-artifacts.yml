@@ -1,0 +1,231 @@
+name: release-artifacts
+
+# Builds, validates and describes the vllm-tbccl release artifacts from one exact commit of this repository and one exact commit of the TBCCL core: a source
+# distribution and the platform wheels that bundle the native backend (Linux x86_64 manylinux_2_28 with CUDA 13, macOS arm64). The wheels are installed without
+# torch-tbccl and tested. It only uploads GitHub Actions artifacts: no tag, no GitHub Release, no package upload, and no tag trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      tbccl_ref:
+        description: "TBCCL core ref (tag or commit) to build against"
+        required: false
+        default: "main"
+  pull_request:
+    paths:
+      - ".github/workflows/release-artifacts.yml"
+      - "tools/ci/**"
+      - "tools/build_release.sh"
+      - "tools/build_release_wheel.sh"
+      - "tools/inspect_wheel.py"
+      - "tools/release_metadata.py"
+      - "setup.py"
+      - "MANIFEST.in"
+      - "pyproject.toml"
+      - "csrc/**"
+      - "vllm_tbccl/**"
+
+permissions:
+  contents: read
+
+env:
+  MANYLINUX_IMAGE: quay.io/pypa/manylinux_2_28_x86_64@sha256:39df0042d5cc900b085aa25a0659368b42a0006c54c474299b785b44c1b4ff82
+  SLIM_IMAGE: python@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c
+  TBCCL_REF: ${{ inputs.tbccl_ref || 'main' }}
+
+jobs:
+  sdist:
+    name: source distribution
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Build, check and inspect twice
+        run: |
+          python -m pip install --quiet "torch==2.13.0" --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install --quiet "build==1.6.1" "twine==7.0.0" "setuptools==80.9.0" wheel
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          tools/build_release.sh out1
+          tools/build_release.sh out2
+          mkdir -p out && cp out1/*.tar.gz out/ && cp out1/inspect-sdist.json out/
+          pip freeze > out/build-environment.txt
+          python tools/release_metadata.py compare out1/*.tar.gz out2/*.tar.gz | tee out/reproducibility.txt | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sdist
+          path: out/
+          retention-days: 14
+          if-no-files-found: error
+
+  linux-wheel:
+    name: Linux wheel (manylinux_2_28, CUDA 13, PyTorch 2.13.0)
+    runs-on: ubuntu-24.04
+    outputs:
+      tbccl_sha: ${{ steps.core_sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: vllm-tbccl
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tensorsofthewall/tbccl
+          ref: ${{ env.TBCCL_REF }}
+          path: tbccl
+      - name: Record the core commit
+        id: core_sha
+        run: echo "sha=$(git -C tbccl rev-parse HEAD)" >> "$GITHUB_OUTPUT" && git -C tbccl rev-parse HEAD
+      - name: Build, repair, inspect and rebuild in manylinux_2_28
+        run: |
+          mkdir -p out
+          docker run --rm -v "$PWD:/src" -w /src/vllm-tbccl "$MANYLINUX_IMAGE" bash tools/ci/linux_wheel.sh /src/out
+          sudo chown -R "$USER" out
+          ls -lR out
+      - name: Reproducibility and size
+        run: |
+          cat out/reproducibility.txt | tee -a "$GITHUB_STEP_SUMMARY"
+          stat -c '%n %s bytes' out/*.whl | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheel-linux-x86_64
+          path: out/
+          retention-days: 14
+          if-no-files-found: error
+
+  linux-clean-install:
+    name: Linux clean install and tests (python 3.13, torch + vLLM, no torch-tbccl, no TBCCL)
+    needs: linux-wheel
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wheel-linux-x86_64
+          path: dl
+      - name: Free disk space for torch and vLLM
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
+          df -h /
+      - name: Install the wheel with vLLM in a bare python:3.13-slim and run the transport tests
+        run: |
+          mkdir wh && cp dl/*.whl wh/
+          docker run --rm -v "$PWD/wh:/wh:ro" -v "$PWD:/repo:ro" "$SLIM_IMAGE" bash -c '
+            set -e
+            apt-get update -qq && apt-get install -y -qq git >/dev/null
+            python -m venv /clean && . /clean/bin/activate
+            pip install -q "vllm==0.30.0" pytest numpy
+            pip install -q /wh/*.whl
+            pip list | grep -i -E "^(torch|vllm|vllm-tbccl|numpy|torch-tbccl|exo-tbccl) " || true
+            # torch-tbccl must be absent: that is the point of the standalone architecture
+            python -c "import importlib.util as u; assert u.find_spec(\"torch_tbccl\") is None, \"torch_tbccl is installed\"; print(\"torch_tbccl: absent\")"
+            ! pip show torch-tbccl >/dev/null 2>&1
+            # a copy of the checkout WITHOUT the package sources, so the installed wheel is what gets imported
+            mkdir /r && cd /repo && tar --exclude=./vllm_tbccl --exclude=./csrc --exclude=./.git -cf - . | tar -xf - -C /r && cd /r
+            cd /tmp
+            python -c "import vllm_tbccl; print(\"imported from\", vllm_tbccl.__file__, vllm_tbccl.__version__)"
+            python -m vllm_tbccl.info
+            python -m vllm_tbccl.patches --list
+            python -m vllm_tbccl.patches --path vllm-metal-0001-pluggable-pp-transport.patch
+            cd /r && CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 python -m pytest -q -p no:cacheprovider tests/test_native_backend.py tests/test_independence.py tests/test_patches.py tests/test_plugin_contract.py'
+
+  macos-wheel:
+    name: macOS arm64 wheel (PyTorch 2.13.0, deployment target 14.0)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: vllm-tbccl
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tensorsofthewall/tbccl
+          ref: ${{ env.TBCCL_REF }}
+          path: tbccl
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Build the core archive, then build, inspect and rebuild the wheel
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "14.0"
+        run: |
+          python -m pip install --quiet "torch==2.13.0" "build==1.6.1" numpy setuptools wheel
+          mkdir -p out/inputs
+          (cd tbccl && scripts/package_native.sh --out "$PWD/../core")
+          cp core/tbccl-*.tar.gz out/inputs/
+          mkdir pfx && tar -xzf core/tbccl-*.tar.gz -C pfx
+          export TBCCL_ROOT=$(ls -d "$PWD"/pfx/tbccl-*)
+          for n in 1 2; do (cd vllm-tbccl && rm -rf build && tools/build_release_wheel.sh "$PWD/../wheel$n"); done
+          python vllm-tbccl/tools/release_metadata.py compare wheel1/*.whl wheel2/*.whl | tee out/reproducibility.txt
+          cp wheel1/*.whl out/ && cp wheel1/inspect.json out/inspect.json
+          pip freeze > out/build-environment.txt
+      - name: Inspect the binary (architecture, install names, rpaths, private paths)
+        run: |
+          mkdir x && cd x && unzip -q ../out/*.whl
+          for so in $(find . -name '*.so'); do lipo -info "$so"; otool -L "$so"; otool -l "$so" | grep -A2 -E 'LC_RPATH|LC_BUILD_VERSION'; done
+          ! strings -a $(find . -name '*.so') | grep -E '/Users/|/Volumes/|runner/work|/private/var'
+      - name: Clean install without torch-tbccl and run the transport tests
+        # vLLM has no macOS wheel on PyPI to install here; the tests that need vLLM itself run in the Linux job. This job covers the native backend on macOS arm64.
+        run: |
+          python -m venv /tmp/clean && . /tmp/clean/bin/activate
+          pip install --quiet "torch==2.13.0" pytest numpy
+          pip install --quiet --no-deps out/*.whl
+          pip list | grep -i -E "^(torch|vllm-tbccl|torch-tbccl|numpy) " || true
+          python -c "import importlib.util as u; assert u.find_spec('torch_tbccl') is None; print('torch_tbccl: absent')"
+          mkdir /tmp/r && (cd "$GITHUB_WORKSPACE/vllm-tbccl" && tar --exclude=./vllm_tbccl --exclude=./csrc --exclude=./.git -cf - . | tar -xf - -C /tmp/r)
+          cd /tmp && python -c "import vllm_tbccl; print('imported from', vllm_tbccl.__file__)" && python -m vllm_tbccl.info && python -m vllm_tbccl.patches --list
+          cd /tmp/r && OMP_NUM_THREADS=2 pytest -q -p no:cacheprovider tests/test_native_backend.py tests/test_independence.py tests/test_patches.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheel-macos-arm64
+          path: out/
+          retention-days: 14
+          if-no-files-found: error
+
+  finalize:
+    name: checksums, SBOM and provenance
+    needs: [sdist, linux-wheel, linux-clean-install, macos-wheel]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: "{sdist,wheel-*}"
+          path: parts
+      - name: SBOMs and SHA256SUMS
+        run: |
+          python -m pip install --quiet spdx-tools==0.8.5
+          mkdir release
+          EPOCH=$(date -u -d "@$(git log -1 --format=%ct)" +%Y-%m-%dT%H:%M:%SZ)
+          cp parts/sdist/*.tar.gz release/
+          s=$(ls release/*.tar.gz)
+          python tools/release_metadata.py sbom "$s" --out "$s.spdx.json" --repo vllm-tbccl --commit "$GITHUB_SHA" --epoch "$EPOCH" --homepage https://vllm-tbccl.tensorsofthewall.com/
+          python tools/release_metadata.py check-sbom "$s.spdx.json" "$s"
+          for d in parts/wheel-linux-x86_64 parts/wheel-macos-arm64; do
+            w=$(ls $d/*.whl); cp "$w" release/
+            core=$(ls $d/inputs/tbccl-*.tar.gz)
+            python tools/release_metadata.py sbom "release/$(basename "$w")" --out "release/$(basename "$w").spdx.json" --repo vllm-tbccl --commit "$GITHUB_SHA" --epoch "$EPOCH" --homepage https://vllm-tbccl.tensorsofthewall.com/ --core-archive "$core"
+            python tools/release_metadata.py check-sbom "release/$(basename "$w").spdx.json" "release/$(basename "$w")"
+          done
+          python tools/release_metadata.py sums release
+          (cd release && sha256sum -c SHA256SUMS)
+          {
+            echo "### vllm-tbccl release artifacts for $GITHUB_SHA (built against TBCCL ${{ needs.linux-wheel.outputs.tbccl_sha }})"
+            echo '| file | bytes | SHA-256 |'; echo '|---|---|---|'
+            (cd release && for f in *.whl *.tar.gz; do echo "| $f | $(stat -c %s "$f") | $(sha256sum "$f" | cut -d' ' -f1) |"; done)
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Attest the artifacts (GitHub build provenance)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release/*
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-artifacts-${{ github.sha }}
+          path: release/
+          retention-days: 14
+          if-no-files-found: error

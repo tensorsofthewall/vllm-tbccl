@@ -5,8 +5,8 @@
 | Package version | 0.2.0.dev0 (development; no release has been published) |
 | Python | 3.10 or newer (`requires-python`); validated with 3.13 |
 | vLLM | 0.31.0 (CUDA and CPU pairing), 0.30.0 (CUDA and Metal pairing); `SUPPORTED_VLLM = ("0.30.0", "0.31.0")` |
-| torch-tbccl | 0.2.0.dev0, with PyTorch 2.13.0 |
-| TBCCL | C ABI 1, wire protocol 4 (through torch-tbccl) |
+| PyTorch | 2.13.x (the bundled native module is tied to one torch minor series) |
+| TBCCL | C ABI 1, wire protocol 4 (bundled; statically linked) |
 | vllm-metal | the upstream commit the patch in `vllm_tbccl/patches/` applies to; needed for the Metal pairing only |
 
 ## Validated pairings

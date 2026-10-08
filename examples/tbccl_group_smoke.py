@@ -3,7 +3,7 @@
 Each rank picks its own platform (VLLM_TBCCL_PLATFORM=cuda|cpu), so one process can be a CUDA rank and the other a CPU rank.
 Exercises every PP-path operation the vLLM 0.30.0 audit found: pp_group.send_tensor_dict / recv_tensor_dict, isend/irecv_tensor_dict,
 send/recv, broadcast_object (control path), both directions; verifies exact values and that every tensor moved through
-ProcessGroupTBCCL (torch_tbccl trace) and no NCCL communicator exists.
+ProcessGroupTBCCL (op_stats) and no NCCL communicator exists.
 
   rank 0: MASTER=<rank0 host:port> VLLM_TBCCL_ENABLE=1 RANK=0 python tbccl_group_smoke.py --init tcp://HOST:PORT
   rank 1: ... RANK=1 ...
@@ -16,7 +16,9 @@ import time
 import torch
 import torch.distributed as dist
 
-import torch_tbccl
+from vllm_tbccl._backend import op_stats, register_backend, reset_op_stats
+
+register_backend()
 from vllm.config import VllmConfig, set_current_vllm_config
 from vllm.distributed import parallel_state as ps
 from vllm.platforms import current_platform
@@ -44,8 +46,7 @@ with set_current_vllm_config(VllmConfig()):
     assert type(pp.device_communicator).__name__ == "TBCCLDeviceCommunicator"
     assert not any("nccl" in k.lower() for k in type(pp.device_communicator).__dict__), "no NCCL objects"
     peer = 1 - rank
-    torch_tbccl.trace_set_enabled(True)
-    torch_tbccl.trace_reset()
+    reset_op_stats()
     results = []
 
     def tensors(tokens, seed):
@@ -86,11 +87,9 @@ with set_current_vllm_config(VllmConfig()):
         pp.send(x)
     obj = pp.broadcast_object({"hello": rank} if rank == 0 else None, src=0)
     assert obj == {"hello": 0}
-    ev = torch_tbccl.trace_events()
-    ops = {}
-    for e in ev:
-        ops[e["op"]] = ops.get(e["op"], 0) + 1
-    tbccl_bytes = sum(e["bytes"] for e in ev)
+    stats = op_stats()
+    ops = {k: v["count"] for k, v in stats.items()}
+    tbccl_bytes = sum(v["bytes"] for v in stats.values())
     print(f"rank {rank}: ProcessGroupTBCCL ops={ops} bytes={tbccl_bytes}", flush=True)
     assert ops.get("send", 0) + ops.get("recv", 0) > 0, "no tensor went through ProcessGroupTBCCL"
     if a.out:

@@ -5,7 +5,7 @@ Not a TP implementation. The audited per-forward collectives are bf16 SUM all-re
 datatype yet, so this probe uses the SAME shapes in float32 (2x the bytes) over the existing, tested reduction path, and also the byte-exact
 bf16 payload through all_gather (byte-generic) -- enough to bound the communication cost of TP before any datatype work.
 
-Two ranks, plain torch.distributed + torch_tbccl, env rendezvous (MASTER_ADDR / MASTER_PORT / RANK / WORLD_SIZE):
+Two ranks, plain torch.distributed + the vllm-tbccl backend, env rendezvous (MASTER_ADDR / MASTER_PORT / RANK / WORLD_SIZE):
   rank 0 (Linux): --device cuda     rank 1 (Mac): --device cpu
 Prints one JSON line per case: median/p25/p75/min microseconds.
 """
@@ -18,7 +18,9 @@ import time
 import torch
 import torch.distributed as dist
 
-import torch_tbccl  # noqa: F401  (registers the 'tbccl' backend)
+from vllm_tbccl._backend import register_backend
+
+register_backend()  # the bundled "tbccl" c10d backend
 
 p = argparse.ArgumentParser()
 p.add_argument("--device", default="cpu")

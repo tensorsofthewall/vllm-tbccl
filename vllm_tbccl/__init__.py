@@ -1,6 +1,6 @@
-"""vllm-tbccl: carry vLLM device-group communication over torch-tbccl.
+"""vllm-tbccl: carry vLLM device-group communication over TBCCL.
 
-Never links libtbccl and implements no collective algorithm: everything goes through torch.distributed with the
-"tbccl" ProcessGroup backend from torch-tbccl.
+Self-contained: a private c10d "tbccl" backend (vllm_tbccl._C) talks to a statically linked libtbccl through its C ABI. It does not use, import or
+require torch-tbccl.
 """
 __version__ = "0.2.0.dev0"

@@ -74,13 +74,17 @@ _started = False
 
 
 def start_pg_trace(period_s: float = 1.0) -> None:
-    """Record every ProcessGroupTBCCL operation (torch_tbccl trace) and keep <VLLM_TBCCL_TRACE_FILE>.pg.<pid>.json current
+    """Record every ProcessGroupTBCCL operation and keep <VLLM_TBCCL_TRACE_FILE>.pg.<pid>.json current
     from a daemon thread (no I/O on the communication path). Covers vLLM's generic send/recv path as well as ours."""
     global _started
     path = (os.path.abspath(os.environ["VLLM_TBCCL_TRACE_FILE"]) if os.environ.get("VLLM_TBCCL_TRACE_FILE") else None)
     if _started or not enabled() or not path:
         return
     _started = True
+    from ._backend import mode
+
+    if mode() != "torch-tbccl":
+        return  # the native backend keeps no per-operation timeline; it comes from the optional torch-tbccl compatibility mode
     import torch_tbccl
 
     torch_tbccl.trace_set_enabled(True)

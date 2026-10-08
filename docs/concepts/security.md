@@ -2,9 +2,9 @@
 
 vllm-tbccl is an adapter over TBCCL and has the same trust model: **trusted peers on a trusted network**. There is no peer authentication, no transport encryption, no message authentication and no authorization. Read the TBCCL security model first; this page lists what vllm-tbccl adds.
 
-vllm-tbccl carries vLLM's device-group traffic and, in the Metal pairing, its pipeline activations over torch-tbccl and TBCCL, so activations and intermediate tensors cross the link in clear text. Endpoint exchange uses `torch.distributed` rendezvous and vLLM's own distributed-initialization addresses, which are also unauthenticated. The vLLM HTTP API server is vLLM's and is unaffected by this plugin: it has its own security considerations that the plugin does not change.
+vllm-tbccl carries vLLM's device-group traffic and, in the Metal pairing, its pipeline activations over TBCCL, so activations and intermediate tensors cross the link in clear text. Endpoint exchange uses `torch.distributed` rendezvous and vLLM's own distributed-initialization addresses, which are also unauthenticated. The vLLM HTTP API server is vLLM's and is unaffected by this plugin: it has its own security considerations that the plugin does not change.
 
-The plugin loads no data from the peer other than tensors handled by torch-tbccl; it does not unpickle or execute anything received from a peer.
+The plugin loads no data from the peer other than tensors handled by TBCCL; it does not unpickle or execute anything received from a peer.
 
 ## Deployment assumptions
 
