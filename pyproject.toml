@@ -1,21 +1,22 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-tbccl"
 version = "0.2.0.dev0"
-description = "Out-of-tree vLLM integration: route vLLM device-group communication through torch-tbccl (ProcessGroupTBCCL)"
+description = "Out-of-tree vLLM integration: vLLM device-group communication over TBCCL through a bundled, private c10d backend"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Sandesh Bharadwaj" }]
-requires-python = ">=3.10"
+requires-python = ">=3.13,<3.14"  # the tested tuple; the bundled native module is a cp313 extension
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
 ]
-dependencies = ["torch", "vllm", "torch-tbccl"]
+# The bundled native module is tied to one torch minor series (checked at import); vllm pins its own torch.
+dependencies = ["torch>=2.13,<2.14", "vllm"]
 
 [project.urls]
 Documentation = "https://vllm-tbccl.tensorsofthewall.com/"

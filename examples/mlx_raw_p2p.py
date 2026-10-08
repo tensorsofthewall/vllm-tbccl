@@ -14,7 +14,9 @@ import time
 import torch
 import torch.distributed as dist
 
-import torch_tbccl  # noqa: F401
+from vllm_tbccl._backend import register_backend
+
+register_backend()  # the bundled "tbccl" c10d backend
 
 p = argparse.ArgumentParser()
 p.add_argument("--sizes", default="2304,25344,1048576", help="bytes")

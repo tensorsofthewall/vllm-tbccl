@@ -1,0 +1,4 @@
+include LICENSE README.md CHANGELOG.md compatibility.json setup.py
+graft csrc
+graft vllm_tbccl/patches
+global-exclude *.so *.pyc *.o __pycache__

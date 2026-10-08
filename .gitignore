@@ -17,3 +17,6 @@ docs/_build/
 dist/
 build/
 .pytest_cache/
+
+# Built native module
+*.so

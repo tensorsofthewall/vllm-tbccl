@@ -15,7 +15,9 @@ import psutil
 import torch
 import torch.distributed as dist
 
-import torch_tbccl  # noqa: F401
+from vllm_tbccl._backend import register_backend
+
+register_backend()  # the bundled "tbccl" c10d backend
 from vllm.config import VllmConfig, set_current_vllm_config
 from vllm.distributed import parallel_state as ps
 from vllm.platforms import current_platform

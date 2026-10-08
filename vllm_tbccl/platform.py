@@ -29,7 +29,7 @@ def install_cpu_group_backend() -> None:
     """vLLM (0.31.0) creates every GroupCoordinator control group with the hard-coded backend "gloo" (``new_group(ranks, backend="gloo")`` in
     ``vllm.distributed.parallel_state``), and gloo does not rendezvous between the Linux and macOS PyTorch builds. There is no public vLLM setting for
     that backend, so this wrapper (installed from the platform plugin, no vLLM source modified) substitutes ``VLLM_CPU_GROUP_BACKEND`` (default
-    "tbccl", i.e. torch-tbccl's ProcessGroup) for exactly those calls: the caller must be vllm.distributed.parallel_state and the requested backend
+    "tbccl", i.e. vllm-tbccl's own ProcessGroup) for exactly those calls: the caller must be vllm.distributed.parallel_state and the requested backend
     must be "gloo". Every other ``new_group`` call, in vLLM or elsewhere, is untouched. ``VLLM_CPU_GROUP_BACKEND=gloo`` disables it."""
     import torch.distributed as dist
 
@@ -65,8 +65,9 @@ def tbccl_platform_plugin() -> str | None:
     if backends.select_backend() == "metal":
         # vllm-metal owns MetalPlatform. Two out-of-tree platform plugins cannot both be active, so DECLINE here and only attach as a
         # transport provider through vllm-metal's generic hooks.
-        import torch_tbccl  # noqa: F401
+        from ._backend import register_backend
 
+        register_backend()
         _check_vllm_version()
         backends.configure_metal_environment()
         install_cpu_group_backend()
@@ -74,7 +75,9 @@ def tbccl_platform_plugin() -> str | None:
 
         diagnostics.start_pg_trace()
         return None
-    import torch_tbccl  # noqa: F401  (registers the "tbccl" c10d backend)
+    from ._backend import register_backend
+
+    register_backend()  # the "tbccl" c10d backend
 
     _check_vllm_version()
     # Control groups: gloo does not rendezvous between Linux and macOS PyTorch builds and vLLM hard-codes it (see install_cpu_group_backend).
