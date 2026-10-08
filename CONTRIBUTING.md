@@ -4,7 +4,7 @@ Thank you for contributing. This document describes how to set up, test and subm
 
 ## Development setup
 
-You need Python >= 3.10, vLLM (0.31.0 for CUDA/CPU, 0.30.0 for CUDA+Metal) and a matching `torch-tbccl` built against an installed TBCCL package, all in one environment with a single torch version. Use `uv`.
+You need Python 3.13, vLLM (0.31.0 for CUDA/CPU, 0.30.0 for CUDA+Metal) and an installed TBCCL package to build the native module against (`TBCCL_ROOT`), all in one environment with a single torch version. Use `uv`.
 
 ## Building and testing
 
@@ -55,7 +55,7 @@ User-visible changes update the relevant documentation (`README.md` and `docs/`)
 
 - **Supported combinations:** vLLM versions are listed in `README.md` and enforced by `SUPPORTED_VLLM` in `vllm_tbccl/platform.py`. Adding one needs validation evidence.
 - **No in-place patches** to vLLM or vllm-metal; the vllm-metal change is a patch file under `vllm_tbccl/patches/`.
-- **Dependencies:** requires `torch-tbccl` and, through it, an installed TBCCL package.
+- **Dependencies:** requires only `torch` and `vllm`; the TBCCL runtime is bundled (statically linked). Never add torch-tbccl or another adapter as a dependency (`tests/test_independence.py`).
 
 ## AI-assisted contributions
 

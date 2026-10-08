@@ -1,6 +1,6 @@
 # vllm-tbccl
 
-vllm-tbccl is an out-of-tree [vLLM](https://github.com/vllm-project/vllm) platform plugin that carries vLLM's device-group communication, and with vllm-metal also its pipeline activations, over [torch-tbccl](https://github.com/tensorsofthewall/torch-tbccl) and therefore over [TBCCL](https://github.com/tensorsofthewall/tbccl). It lets one vLLM pipeline span machines with different accelerators, for example a Linux host with an NVIDIA GPU and a Mac, joined by a direct Thunderbolt 4 link or any TCP network, with no NCCL data path. It owns no transport or algorithm and never links libtbccl.
+vllm-tbccl is an out-of-tree [vLLM](https://github.com/vllm-project/vllm) platform plugin that carries vLLM's device-group communication, and with vllm-metal also its pipeline activations, over [TBCCL](https://github.com/tensorsofthewall/tbccl) through its own bundled `tbccl` c10d backend. It lets one vLLM pipeline span machines with different accelerators, for example a Linux host with an NVIDIA GPU and a Mac, joined by a direct Thunderbolt 4 link or any TCP network, with no NCCL data path. It is self-contained: the wheel carries a small native c10d backend statically linked to libtbccl's stable C ABI. It owns no transport or algorithm, and it does not use or require torch-tbccl.
 
 > **Status:** development version 0.2.0.dev0, experimental, no release published.
 
@@ -14,8 +14,8 @@ vllm-tbccl is an out-of-tree [vLLM](https://github.com/vllm-project/vllm) platfo
 ```sh
 uv venv .venv && . .venv/bin/activate
 uv pip install vllm==0.31.0           # or 0.30.0 for the Metal pairing
-# build and install torch-tbccl against an installed TBCCL prefix, then:
-uv pip install -e .
+# build from source against an installed TBCCL prefix (a release wheel needs no TBCCL install):
+TBCCL_ROOT=<installed tbccl prefix> uv pip install --no-build-isolation --no-deps -e .
 ```
 
 Details, including the vllm-metal patch: [installing](docs/getting-started/install.md).
@@ -37,7 +37,7 @@ export VLLM_USE_V2_MODEL_RUNNER=0          # on both hosts of a CUDA and CPU pai
 | Linux CUDA and Mac CPU over Thunderbolt 4 | 0.31.0 | Qwen3-0.6B |
 | Linux CUDA and Mac Metal over Thunderbolt 4 | 0.30.0 + vllm-metal with the patch | Qwen3-0.6B |
 
-The stack is torch-tbccl 0.2.0.dev0, PyTorch 2.13.0, TBCCL C ABI 1 / wire protocol 4. Other versions warn once at plugin activation and nothing is claimed for them. See [compatibility](docs/reference/compatibility.md) and the draft [validation](docs/validation/0.2.0.md).
+The stack is PyTorch 2.13.0 and TBCCL C ABI 1 / wire protocol 4. Other versions warn once at plugin activation and nothing is claimed for them. See [compatibility](docs/reference/compatibility.md) and the draft [validation](docs/validation/0.2.0.md).
 
 ## Documentation
 

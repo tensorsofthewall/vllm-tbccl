@@ -1,6 +1,6 @@
 # Related projects
 
-vllm-tbccl sits on top of torch-tbccl and TBCCL. The projects below have their own documentation, version and release schedule.
+vllm-tbccl sits on top of TBCCL (bundled, statically linked); it does not depend on torch-tbccl, which is a peer adapter over the same runtime. The projects below have their own documentation, version and release schedule.
 
 | Project | Role | Documentation | Source | Planned release |
 |---|---|---|---|---|

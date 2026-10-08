@@ -8,13 +8,14 @@ Planned for 0.2.0. This section describes the first planned release and changes 
 
 ### Added
 
-- A vLLM platform plugin that carries device-group communication over torch-tbccl.
+- A vLLM platform plugin that carries device-group communication over TBCCL through its own bundled, private `tbccl` c10d backend (`vllm_tbccl._C`, statically linked to libtbccl's C ABI). It does not use or require torch-tbccl.
+- `python -m vllm_tbccl.info` reports the installed layers (torch, libtbccl version, C ABI, wire protocol, devices).
 - Two-stage pipeline parallelism (`PP=2`, `TP=1`) between a CUDA node and a CPU node with vLLM 0.31.0, unmodified.
 - The same between a CUDA node and a Metal node with vLLM 0.30.0 and vllm-metal plus the transport patch in `vllm_tbccl/patches/`.
 
 ### Changed
 
-- None.
+- The package is now a platform wheel (it carries a native module) instead of a pure-Python wheel, and no longer depends on torch-tbccl. `TBCCL_LOCAL_ENDPOINT` must use port 0.
 
 ### Fixed
 
@@ -23,7 +24,7 @@ Planned for 0.2.0. This section describes the first planned release and changes 
 ### Compatibility
 
 - vLLM 0.31.0 (CUDA and CPU pairing) and vLLM 0.30.0 with vllm-metal (CUDA and Metal pairing); see `compatibility.json`.
-- Requires torch-tbccl and TBCCL wire protocol 4.
+- TBCCL C ABI 1 and wire protocol 4 (bundled); PyTorch 2.13.x; CPython 3.13.
 
 ### Known limitations
 

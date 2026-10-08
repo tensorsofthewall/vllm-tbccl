@@ -7,7 +7,7 @@ vLLM (mp executor, nnodes=2, PP=2, TP=1)
   GroupCoordinator (pp group)
      CUDA rank: generic path        CPU rank: vllm_tbccl.TBCCLDeviceCommunicator
   torch.distributed: device group = ProcessGroupTBCCL, control group = tbccl (scoped wrapper)
-  torch-tbccl -> installed libtbccl -> TCP (Thunderbolt 4)
+  bundled tbccl c10d backend -> libtbccl (C ABI) -> TCP (Thunderbolt 4)
 ```
 
 ## Real hardware requirements

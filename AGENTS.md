@@ -4,10 +4,10 @@ Technical guidance for contributors and coding agents working in this repository
 
 ## Purpose
 
-`vllm-tbccl` is an out-of-tree vLLM platform integration that carries vLLM's device-group communication, and with vllm-metal also pipeline activations, over `torch-tbccl` and therefore over TBCCL. It owns no transport or algorithm and never links libtbccl.
+`vllm-tbccl` is an out-of-tree vLLM platform integration that carries vLLM's device-group communication, and with vllm-metal also pipeline activations, over TBCCL through its own bundled private c10d backend. It owns no transport or algorithm; the native backend (`csrc/`) only maps vLLM's operations onto libtbccl's stable C ABI. It never depends on, imports or links torch-tbccl or any other adapter (`tests/test_independence.py`).
 
 ```
-vLLM (device groups / PP)  ->  vllm-tbccl  ->  torch-tbccl (c10d backend "tbccl")  ->  installed libtbccl
+vLLM (device groups / PP)  ->  vllm-tbccl (plugin + c10d backend "tbccl")  ->  libtbccl C ABI (static)
 ```
 
 ## Layout
@@ -20,7 +20,7 @@ vLLM (device groups / PP)  ->  vllm-tbccl  ->  torch-tbccl (c10d backend "tbccl"
 
 ## Architecture boundaries
 
-- Do not add transport, algorithm, staging or reduction code here. If something is missing, identify the missing torch-tbccl or TBCCL API.
+- Do not add transport, algorithm, staging or reduction code here. If something is missing, identify the missing TBCCL API. The native backend may use the C ABI (`tbccl/tbccl.h`) only, never TBCCL's private C++ internals.
 - Do not patch vLLM or vllm-metal in place. The one vllm-metal change (a generic pluggable pipeline-transport seam) is carried as a patch file.
 - Supported combinations are listed in `README.md` and enforced in `vllm_tbccl/platform.py` (`SUPPORTED_VLLM`). Do not extend them without validation evidence.
 
@@ -29,16 +29,16 @@ vLLM (device groups / PP)  ->  vllm-tbccl  ->  torch-tbccl (c10d backend "tbccl"
 - Groups are 2-rank; pipeline parallelism is validated with PP=2 and TP=1.
 - The control group backend and the device group backend are separate; the plugin installs scoped wrappers instead of modifying vLLM.
 - Boundary codecs for the Metal path are an explicit allowlist (`vllm_tbccl/backends/codecs.py`); an unlisted architecture is rejected rather than assumed to behave like another.
-- Lifetime and failure behavior come from torch-tbccl and TBCCL: a communicator failure is communicator-wide and there is no recovery.
+- Lifetime and failure behavior come from TBCCL (the backend never destroys a WorkState on the completion thread, see `csrc/completion_worker.hpp`): a communicator failure is communicator-wide and there is no recovery.
 
 ## Build and test
 
 ```sh
-uv venv .venv && uv pip install --python .venv/bin/python -e .   # needs vllm and torch-tbccl installed in the same environment
+uv venv .venv && uv pip install --python .venv/bin/python -e . --no-build-isolation --no-deps   # TBCCL_ROOT=<installed tbccl prefix>; needs vllm in the same environment, never torch-tbccl
 .venv/bin/python -m pytest -q tests
 ```
 
-- Use one torch version across vLLM, torch-tbccl and this package; do not use `--reinstall`, which rewrites torch.
+- Use one torch version across vLLM and this package; do not use `--reinstall`, which rewrites torch.
 - `VLLM_TBCCL_ENABLE=1` enables the platform plugin in a process. `TBCCL_LOCAL_ENDPOINT=<host>:0` lets each communicator choose its own port pair on loopback.
 - End-to-end and multi-host scripts need a local model; never download model weights. Metal tests skip on Linux. Physical-link runs are opt-in.
 - Peer-failure tests are loopback only.
