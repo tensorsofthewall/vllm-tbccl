@@ -9,6 +9,7 @@ All variables are read from the environment of each vLLM process. None is requir
 | `VLLM_TBCCL_ENABLE=1` | activates the `tbccl` platform plugin in this process |
 | `TBCCL_LOCAL_ENDPOINT=<host>:0` | lets every communicator pick its own port pair on the given address (read by the bundled backend; the port must be 0, the kernel chooses) |
 | `VLLM_TBCCL_BACKEND=auto\|torch\|metal` | `torch`: vllm-tbccl owns the CUDA or CPU platform; `metal`: vllm-metal owns the platform and vllm-tbccl attaches through its hooks; `auto` (default) chooses by environment |
+| `VLLM_TBCCL_PROCESS_GROUP=native\|torch-tbccl` | `native` (default): the c10d `tbccl` backend bundled in this package; `torch-tbccl`: optional compatibility mode that uses a separately installed torch-tbccl instead (never required) |
 | `VLLM_TBCCL_PLATFORM=cpu\|cuda` | forces which base platform the plugin subclasses |
 | `VLLM_TBCCL_WORKER=0` | do not swap in the thin TBCCL worker subclasses (default on; a user-chosen worker class is never replaced) |
 | `VLLM_TBCCL_KV_LAYOUTS` | overrides the KV-cache layouts a worker reports for the heterogeneous layout agreement |
