@@ -9,8 +9,8 @@ You need Python 3.13, vLLM (0.31.0 for CUDA/CPU, 0.30.0 for CUDA+Metal) and an i
 ## Building and testing
 
 ```sh
-uv venv .venv
-uv pip install --python .venv/bin/python -e .
+uv venv --python 3.13 .venv
+TBCCL_ROOT=<installed tbccl prefix> uv pip install --python .venv/bin/python --no-build-isolation --no-deps -e .
 .venv/bin/python -m pytest -q tests
 ```
 

@@ -1,5 +1,7 @@
 # Pipeline parallelism over TBCCL
 
+For a complete launch see the [quickstart](../getting-started/quickstart.md); this page explains the topology and what the plugin changes.
+
 The validated topology is two vLLM nodes, one pipeline stage each: a leader node and a headless node (`--nnodes 2 --headless`), with the multiprocessing executor, `PP=2`, `TP=1`, and no async scheduling. The pipeline's device group and vLLM's control group both use the `tbccl` backend.
 
 ```
@@ -13,8 +15,8 @@ vLLM (mp executor, nnodes=2, PP=2, TP=1)
 ## Real hardware requirements
 
 - Cross-host engines need a direct link such as Thunderbolt 4 between the nodes. The executor's reverse-direction queues are blocked by an ordinary LAN firewall, so a LAN cannot be used as the pipeline link.
-- A dead worker on the headless node is not detected by vLLM's leader. Use client timeouts and an external liveness check.
-- Peer-failure behavior is validated on loopback only.
+- A dead worker on the headless node is not detected by vLLM's leader (an upstream vLLM limitation, not a TBCCL transport failure). Use client timeouts and an external liveness check ([known limitations](../project/limitations.md)).
+- Peer-failure behavior of the backend is validated on loopback and at backend level on the physical link; the engine-level behavior above is vLLM's.
 
 ## What the plugin changes
 
