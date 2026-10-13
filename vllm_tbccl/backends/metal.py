@@ -14,6 +14,7 @@ import torch
 import torch.distributed as dist
 
 from .. import diagnostics as diag
+from .. import roworder
 from ..peer import peer_kind, publish_kind
 from ..wire import recv_object, send_object
 from .codecs import codec_for
@@ -48,8 +49,7 @@ class TBCCLMetalPipelineTransport:
         self.peer_kind = peer_kind(pp.ranks[1 - rank])
         self._zeros = {}
         install_step_timing()
-        self._perm = None          # per-step row permutation toward an upstream peer (None = identity)
-        self._inv = None
+        self._packed = None        # this step's actual row order [(request_id, n_rows), ...] (set by begin_step)
         self._codec = None
         # Receive-buffer pool (VLLM_TBCCL_RECV_POOL=1, off by default): decode-sized upstream receives reuse one MLX buffer per
         # (tensor, shape, dtype) instead of paying mx.zeros + mx.eval per tensor per step (~1.3 ms measured in vLLM
@@ -154,8 +154,7 @@ class TBCCLMetalPipelineTransport:
         from vllm.distributed.parallel_state import TensorMetadata
 
         t_entry = diag.now_ns()
-        if self._inv is not None:
-            x = self._take(x, self._inv)        # this stage's packed order -> upstream row order
+        order = self._step_order()               # the rows go out in this stage's packed order; the receiver permutes
         mx.eval(x)
         t_eval = diag.now_ns()
         shape = tuple(x.shape)
@@ -168,6 +167,8 @@ class TBCCLMetalPipelineTransport:
             self._zeros[key] = zeros
         parts = self.codec.from_metal(x, zeros)
         meta = [(k, TensorMetadata(self.peer_kind, tdt, torch.Size(shape))) for k in self.codec.keys]
+        meta.append((roworder.ROW_ORDER_KEY, order))
+        roworder.trace("send_order", order=order)
         g = self._ranks[dst]
         send_object(meta, g, self._cpu_group)
         xa, za = (self._alias(parts[k]) for k in self.codec.keys)
@@ -186,6 +187,13 @@ class TBCCLMetalPipelineTransport:
         t_entry = diag.now_ns()
         g = self._ranks[src]
         meta = recv_object(g, self._cpu_group)
+        source = [v for k, v in meta if k == roworder.ROW_ORDER_KEY]
+        if len(source) != 1:
+            raise roworder.RowOrderError(
+                "vllm-tbccl: the upstream pipeline peer did not send its row order (a vllm-tbccl without the row-order protocol); "
+                "both stages must run the same vllm-tbccl version")
+        source = roworder.normalize(source[0], "received row order")
+        meta = [(k, v) for k, v in meta if k != roworder.ROW_ORDER_KEY]
         names = [k for k, _ in meta]
         if sorted(names) != sorted(self.codec.keys):
             raise NotImplementedError(
@@ -207,8 +215,11 @@ class TBCCLMetalPipelineTransport:
         t_recv = diag.now_ns()
         cs = _csum(self._alias(got["hidden_states"]))
         x = self.codec.to_metal(got)
-        if self._perm is not None:
-            x = self._take(x, self._perm)       # upstream row order -> this stage's packed order
+        dest = self._step_order()
+        perm = roworder.row_permutation(source, dest)
+        roworder.trace("recv_permute", peer_order=source, local_order=dest, perm=None if perm is None else perm.tolist())
+        if perm is not None:
+            x = self._take(x, perm)             # peer's row order -> this stage's packed order
         mx.eval(x)
         t_done = diag.now_ns()
         diag.record("metal_recv_upstream", 2 * x.nbytes, shape, tdt, t_entry, t_done, csum=cs,
@@ -216,32 +227,19 @@ class TBCCLMetalPipelineTransport:
         return x
 
     # ---- request-row order: upstream vLLM vs vllm-metal ---------------------------------------------------------------------
-    # A packed activation holds one row per scheduled token. Upstream packs requests as [scheduled_new_reqs in order] +
-    # [scheduled_cached_reqs in order] (observed on every step of a staggered 53-step stress run, vLLM 0.30.0); vllm-metal packs
-    # [decode rows][prefill rows]. begin_step() derives the permutation for the step from the scheduler output both stages receive.
+    # See roworder.py. This stage's rows are [decode rows][prefill rows] (vllm-metal's packing); begin_step() records that order from the
+    # runner. The upstream peer's order is whatever its persistent input batch holds and travels with its activation; it is never derived
+    # from the scheduler output.
 
     def begin_step(self, packed, scheduler_output) -> None:
-        import numpy as np
+        self._packed = roworder.normalize(packed, "Metal packed row order") if self.peer_kind != "metal" else None
 
-        if self.peer_kind == "metal":
-            self._perm = self._inv = None
-            return
-        sched = scheduler_output
-        counts = sched.num_scheduled_tokens
-        up_ids = [r.req_id for r in sched.scheduled_new_reqs] + list(sched.scheduled_cached_reqs.req_ids)
-        up_off, off = {}, 0
-        for rid in up_ids:
-            up_off[rid] = off
-            off += int(counts[rid])
-        metal = dict(packed)
-        if set(up_ids) != set(metal) or any(int(counts[r]) != n for r, n in metal.items()):
-            raise RuntimeError(
-                "vllm-tbccl: the Metal packed layout does not match the scheduler output (speculative decode / unsupported batch?): "
-                f"packed={packed} scheduled={[(r, int(counts[r])) for r in up_ids]}")
-        perm = np.concatenate([np.arange(up_off[rid], up_off[rid] + n) for rid, n in packed]).astype(np.int32)
-        ident = bool((perm == np.arange(perm.size)).all())
-        self._perm = None if ident else perm              # metal row m  <-  upstream row perm[m]
-        self._inv = None if ident else np.argsort(perm).astype(np.int32)   # upstream row u  <-  metal row inv[u]
+    def _step_order(self):
+        """This step's order, consumed by the one boundary crossing of the step (a stale order is never reused)."""
+        order, self._packed = self._packed, None
+        if order is None:
+            raise roworder.RowOrderError("vllm-tbccl: a pipeline activation crossed the stage boundary before begin_step() set this step's row order")
+        return order
 
     def _take(self, x, idx):
         import mlx.core as mx

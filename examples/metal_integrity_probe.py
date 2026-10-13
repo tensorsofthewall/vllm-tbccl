@@ -7,6 +7,7 @@ The CUDA rank is a real vLLM GroupCoordinator (``send_tensor_dict`` / ``recv_ten
 ``TBCCLMetalPipelineTransport`` (zero-copy MLX alias, boundary codec). Payloads are exact integer patterns (representable in bf16) built on the sending device:
   CUDA -> Metal: {hidden_states = A, residual = B}; Metal must receive x = A + B bit for bit (the codec's add is exact for |A|,|B| <= 125),
   Metal -> CUDA: x; CUDA must receive hidden_states == x and residual == 0 bit for bit.
+The rows belong to up to three requests that the two stages order DIFFERENTLY (the CUDA stage's input-batch order is the reverse of the Metal stage's packed order), so every transfer also exercises the explicit row-order protocol (vllm_tbccl.roworder): the activation must arrive in the receiver's own row order, bit for bit.
 Sizes are the pipeline's real shapes (decode 1 row, prefill 3..512 rows, hidden 1024, bf16), with random compute-like gaps. Any altered element is a failure.
 """
 import argparse
@@ -14,6 +15,8 @@ import json
 import os
 import random
 import time
+
+import types
 
 import torch
 import torch.distributed as dist
@@ -59,6 +62,15 @@ def ipattern_mx(tokens, seed, k):
     return ((mx.arange(n, dtype=mx.int32) * 31 + seed * 17 + k * 101) % 251 - 125).reshape(tokens, a.hidden)
 
 
+def layout(tokens):
+    """Requests sharing the rows: logical (Metal packed) order and the CUDA stage's input-batch order (reversed)."""
+    k = 1 if tokens < 3 else 3
+    sizes = [tokens // k] * k
+    sizes[-1] += tokens - sum(sizes)
+    metal = [(f"req{i}", n) for i, n in enumerate(sizes)]
+    return metal, list(reversed(metal))
+
+
 stats = {"cuda_to_metal": 0, "cuda_to_metal_bad": 0, "metal_to_cuda": 0, "metal_to_cuda_bad": 0, "elements_bad": 0, "bytes": 0}
 first_bad = None
 
@@ -76,6 +88,15 @@ with set_current_vllm_config(VllmConfig()):
         tr = TBCCLMetalPipelineTransport(rank=rank, size=2)
         assert tr.peer_kind in ("cuda", "cpu"), tr.peer_kind   # an upstream vLLM peer (cpu only in the local loopback validation)
     dev = pp.device
+    if a.role == "cuda":
+        from vllm_tbccl import roworder
+        from vllm_tbccl.worker import install_group_row_order_hooks
+
+        install_group_row_order_hooks(pp)   # what the vllm-tbccl CUDA worker installs at its first step
+
+        def begin_cuda_step(cuda_order):
+            runner = types.SimpleNamespace(input_batch=types.SimpleNamespace(req_ids=[r for r, _ in cuda_order], num_reqs=len(cuda_order)))
+            roworder.STATE.begin_step(runner, types.SimpleNamespace(num_scheduled_tokens=dict(cuda_order)))
     if a.mode != "integrity":
         if a.role == "cuda":
             time.sleep(3)
@@ -106,12 +127,19 @@ with set_current_vllm_config(VllmConfig()):
                 seed = 1000 * it + tokens + sender * 5
                 gap()
                 if a.role == "cuda":
-                    if rank == sender:  # CUDA -> Metal
-                        pp.send_tensor_dict({"hidden_states": ipattern_torch(tokens, seed, 0, dev).to(torch.bfloat16),
-                                             "residual": ipattern_torch(tokens, seed, 1, dev).to(torch.bfloat16)})
-                    else:  # Metal -> CUDA
+                    metal_order, cuda_order = layout(tokens)
+                    to_cuda = torch.as_tensor(roworder.row_permutation(metal_order, cuda_order) if len(metal_order) > 1 else list(range(tokens)), dtype=torch.long, device=dev)
+                    begin_cuda_step(cuda_order)
+                    if rank == sender:  # CUDA -> Metal: the rows leave in the CUDA input-batch order
+                        pp.send_tensor_dict({"hidden_states": ipattern_torch(tokens, seed, 0, dev).to(torch.bfloat16)[to_cuda],
+                                             "residual": ipattern_torch(tokens, seed, 1, dev).to(torch.bfloat16)[to_cuda]})
+                    else:  # Metal -> CUDA: the rows arrive in the Metal packed order and are put into the CUDA order, as the worker does
                         got = pp.recv_tensor_dict()
-                        want = ipattern_torch(tokens, seed, 0, dev).to(torch.bfloat16)
+                        perm = roworder.STATE.take_receive_permutation()
+                        if perm is not None:
+                            idx = torch.as_tensor(perm, dtype=torch.long, device=dev)
+                            got = {k: v[idx] for k, v in got.items()}
+                        want = ipattern_torch(tokens, seed, 0, dev).to(torch.bfloat16)[to_cuda]
                         bad = int((got["hidden_states"].view(torch.int16) != want.view(torch.int16)).sum().item()) + int((got["residual"].view(torch.int16) != 0).sum().item())
                         bad += int(got["hidden_states"].shape != want.shape)
                         stats["metal_to_cuda"] += 1
@@ -121,11 +149,13 @@ with set_current_vllm_config(VllmConfig()):
                             stats["elements_bad"] += bad
                             first_bad = first_bad or ("metal_to_cuda", tokens, it, sender)
                 else:
-                    if rank == sender:  # Metal -> CUDA
+                    metal_order, _ = layout(tokens)
+                    tr.begin_step(metal_order, None)
+                    if rank == sender:  # Metal -> CUDA: the rows leave in the Metal packed order
                         x = ipattern_mx(tokens, seed, 0).astype(mx.bfloat16)
                         mx.eval(x)
                         tr.send(x, peer)
-                    else:  # CUDA -> Metal
+                    else:  # CUDA -> Metal: the rows arrive in the CUDA order and are put into the Metal packed order by the transport
                         x = tr.recv((tokens, a.hidden), mx.bfloat16, peer)
                         want = (ipattern_mx(tokens, seed, 0) + ipattern_mx(tokens, seed, 1)).astype(mx.bfloat16)
                         bad = int(mx.sum(x.view(mx.uint16) != want.view(mx.uint16)).item())
