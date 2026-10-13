@@ -7,7 +7,7 @@ vllm-tbccl installs as a separate package into the environment that holds vLLM, 
 | Pairing | vLLM | Notes |
 |---|---|---|
 | CUDA node and CPU node | **0.31.0** | validated on a Linux CUDA host and a Mac CPU host over Thunderbolt 4 |
-| CUDA node and Metal node | **0.31.0** | needs [vllm-metal](https://github.com/vllm-project/vllm-metal) **0.31.0** with the transport patch shipped in this package ([patch workflow](../guides/patches.md)); validated on a Linux CUDA host and a Mac Metal host over Thunderbolt 4 in both pipeline orders |
+| CUDA node and Metal node | **0.31.0** | needs the [`tensorsofthewall/vllm-metal`](https://github.com/tensorsofthewall/vllm-metal) at the immutable tag `v0.31.0-tbccl1` (commit `fa4f934586bc27ac974a54183237594d1dc28fc5`, upstream vllm-metal 0.31.0 plus the generic transport seam) ([Mac node](#install-a-wheel)); validated on a Linux CUDA host and a Mac Metal host over Thunderbolt 4 in both pipeline orders |
 
 Both use pipeline parallelism with two stages (`PP=2`, `TP=1`) and two-rank groups. `SUPPORTED_VLLM` in `vllm_tbccl/platform.py` is `("0.31.0",)`; other vLLM versions (including 0.30.0, which the 0.2.0rc1 validation used) warn once when the plugin activates and nothing is claimed for them. See [compatibility](../reference/compatibility.md).
 
@@ -26,8 +26,10 @@ The Linux wheel is linked against `libtorch_cuda.so` and `libc10_cuda.so`: it ne
 
 ## Install a wheel
 
-The 0.2.0rc1 wheels (`cp313` only) and sdist are attached to the GitHub pre-release [`v0.2.0rc1`](https://github.com/tensorsofthewall/vllm-tbccl/releases/tag/v0.2.0rc1). They are not published on PyPI or TestPyPI. ```{warning}
-0.2.0rc1 derives the CUDA and Metal row order from the scheduler output and can exchange activations between concurrent requests; do not use it for that pairing (see the [changelog](https://github.com/tensorsofthewall/vllm-tbccl/blob/main/CHANGELOG.md)). The fix is on `main`; wheels for `cp312` and `cp313` are built by the `release-artifacts` workflow (or build from source below) until the next release.
+The 0.2.0rc2 wheels (`cp312` and `cp313`) and sdist are attached to the GitHub pre-release [`v0.2.0rc2`](https://github.com/tensorsofthewall/vllm-tbccl/releases/tag/v0.2.0rc2). They are not published on PyPI or TestPyPI.
+
+```{warning}
+0.2.0rc1 (superseded) derived the CUDA and Metal row order from the scheduler output and could exchange activations between concurrent requests; use 0.2.0rc2 or later for that pairing (see the [changelog](https://github.com/tensorsofthewall/vllm-tbccl/blob/main/CHANGELOG.md)).
 ```
 
 **Linux CUDA node:**
@@ -39,14 +41,21 @@ uv pip install --no-deps ./vllm_tbccl-<version>-cp312-cp312-manylinux_2_27_x86_6
 python -m vllm_tbccl.info
 ```
 
-**Mac node:** install vLLM 0.31.0 for macOS (for the Metal pairing also vllm-metal 0.31.0 with the transport patch, following the vllm-metal project's own instructions), using Python 3.12, then:
+**Mac node:** install vLLM 0.31.0 for macOS using Python 3.12; for the Metal pairing install the vllm-metal fork first (below), then:
 
 ```sh
 uv pip install --no-deps ./vllm_tbccl-<version>-cp312-cp312-macosx_14_0_arm64.whl
 python -m vllm_tbccl.info
 ```
 
-For the Metal pairing also apply the vllm-metal transport patch ([patch workflow](../guides/patches.md)).
+For the Metal pairing install the vllm-metal fork at the immutable tag (it is vllm-metal 0.31.0 plus the generic transport seam; no patch step):
+
+```sh
+git clone --branch v0.31.0-tbccl1 --depth 1 https://github.com/tensorsofthewall/vllm-metal.git
+cd vllm-metal && ./install.sh && source .venv-vllm-metal/bin/activate
+```
+
+The fork is pinned by tag, never by branch. The patch shipped in this package is a reference copy of the same change ([patch workflow](../guides/patches.md)).
 
 ## Check the installation
 

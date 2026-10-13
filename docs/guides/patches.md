@@ -1,6 +1,6 @@
 # The patch workflow
 
-vllm-tbccl is not a vLLM fork. vLLM is used unmodified: every adaptation uses a public extension point (the platform plugin entry point, `worker_cls`, a scoped `new_group` wrapper). Patch files ship **inside the wheel and the sdist** only for cases where an upstream project would need a change that does not belong in vllm-tbccl itself.
+vllm-tbccl is not a vLLM fork. vLLM is used unmodified: every adaptation uses a public extension point (the platform plugin entry point, `worker_cls`, a scoped `new_group` wrapper). The vllm-metal seam is published as the immutable fork tag `tensorsofthewall/vllm-metal@v0.31.0-tbccl1`; patch files ship **inside the wheel and the sdist** for audit and for cases where an upstream project would need a change that does not belong in vllm-tbccl itself.
 
 ## What ships
 
@@ -12,7 +12,7 @@ python -m vllm_tbccl.patches --path vllm-metal-0001-pluggable-pp-transport.patch
 
 | Patch | Applies to | Needed? |
 |---|---|---|
-| `vllm-metal-0001-pluggable-pp-transport.patch` | [vllm-metal](https://github.com/vllm-project/vllm-metal) | **Yes, for the CUDA and Metal pairing** (vllm-metal 0.31.0 with vLLM 0.31.0). Not needed for the CUDA and CPU pairing. |
+| `vllm-metal-0001-pluggable-pp-transport.patch` | [vllm-metal](https://github.com/vllm-project/vllm-metal) | **Reference copy only.** Users install the fork tag `tensorsofthewall/vllm-metal@v0.31.0-tbccl1`, which already contains this change; no patch step. Not needed for the CUDA and CPU pairing. |
 | `0001-generic-heterogeneous-hooks.patch` | vLLM 0.30.0 | **No.** A legacy patch kept for history. vLLM 0.30.0 and 0.31.0 run unmodified with the plugin; do not apply it. |
 
 ## What the vllm-metal patch does
@@ -23,19 +23,22 @@ It adds a generic, backwards-compatible seam to vllm-metal's pipeline parallelis
 - the environment switches `VLLM_METAL_PP_TRANSPORT_CLS` (a transport class by qualified name) and `VLLM_METAL_DIST_BACKEND` (the `torch.distributed` backend of the worker's control groups, default `gloo`);
 - an optional `begin_step` hook that tells the transport the packed row layout of each step.
 
-vllm-tbccl supplies a transport class that sends the activations over TBCCL. Without the patch, vllm-metal has no way to take that transport. The patch is meant to be proposed upstream separately, after which this step disappears.
+vllm-tbccl supplies a transport class that sends the activations over TBCCL. Without the seam, vllm-metal has no way to take that transport. The change is meant to be proposed upstream separately, after which this step disappears.
 
 ## Which versions it is for
 
 | | |
 |---|---|
 | vLLM | 0.31.0 |
-| vllm-metal | **0.31.0**, commit `e7a0c90bec180e5dd4275c473fd7a36e709a930e` (tag `v0.31.0`, 2026-10-12) |
-| patch SHA-256 | `f0a13f4874dbc7b95973f5e237cdd4b7d02108597dcc707b51cc95ca04c87b07` |
+| vllm-metal fork | `tensorsofthewall/vllm-metal`, tag `v0.31.0-tbccl1`, commit `fa4f934586bc27ac974a54183237594d1dc28fc5` |
+| upstream vllm-metal | **0.31.0**, commit `e7a0c90bec180e5dd4275c473fd7a36e709a930e` (tag `v0.31.0`, 2026-10-12) |
+| reference patch SHA-256 | `af950dfc4da283efcbbd7e55dcf28d1ffe6d7d608ded034a6888ea56844b3756` |
 
-The patch was generated with `git format-patch` from a commit on top of that exact vllm-metal revision and applies to it with `git apply --check` and `git am` without changes. It adds focused tests (`tests/test_pipeline_transport.py`, two environment-variable cases in `tests/test_envs.py`) and documents the two switches in vllm-metal's `docs/configuration.md`; with the patch applied vllm-metal's own test-suite results are unchanged (the same 44 tests that need model downloads fail on a clean checkout and on the patched one). It targets one exact upstream revision: on a later vllm-metal it may need refreshing, and `git apply --check` tells you.
+The fork tag is exactly upstream `v0.31.0` plus one commit: nine files (+293/-12) adding the seam, focused tests (`tests/test_pipeline_transport.py`, two environment-variable cases in `tests/test_envs.py`) and the two switches in `docs/configuration.md`. The reference patch is `git format-patch` of that commit and applies to the upstream revision with `git apply --check` and `git am`. With the seam applied vllm-metal's own test-suite results are unchanged: the failing tests are the ones that need model downloads, and they fail the same way on a clean upstream checkout. The tag is immutable; a refresh for a newer vllm-metal is published as a new tag, never by moving this one.
 
-## Inspect, apply, verify
+## Install the fork, or inspect and apply the reference patch
+
+Normal users only install the fork tag ([install](../getting-started/install.md)). The remaining steps are for auditing the change or carrying it onto your own vllm-metal checkout.
 
 1. **Inspect.** The patch is a mail-formatted git patch; read it, and see which files it touches:
 

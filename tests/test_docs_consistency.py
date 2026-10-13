@@ -53,6 +53,11 @@ def test_documented_versions_match_the_manifest():
     patches = _read("docs", "guides", "patches.md")
     for text in (compat, patches):
         assert metal["revision"] in text and metal["transport_patch_sha256"] in text and metal["version"] in text
+        assert metal["fork_tag"] in text and metal["fork_revision"] in text
+    assert metal["fork"] == "tensorsofthewall/vllm-metal" and metal["fork_tag"] == "v0.31.0-tbccl1"
+    for page in (install, _read("docs", "guides", "cuda-metal.md")):
+        assert metal["fork_tag"] in page
+    assert "/mnt/BigChonk" not in install and "git apply" not in install
     assert "**0.31.0**" in install and "0.30.0" not in manifest["frameworks"]["vllm"]["supported"]
 
 

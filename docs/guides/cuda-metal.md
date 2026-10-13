@@ -2,7 +2,7 @@
 
 A Linux CUDA node and a Mac Metal node can form one pipeline. The Mac node runs vllm-metal; vllm-tbccl attaches to it through generic hooks instead of owning the platform:
 
-- `VLLM_TBCCL_BACKEND=metal` (or `auto` when vllm-metal is installed) makes vllm-tbccl decline to be the platform plugin on that node and attach through vllm-metal's hooks `VLLM_METAL_PP_TRANSPORT_CLS` (set to the vllm-tbccl transport class) and `VLLM_METAL_DIST_BACKEND=tbccl`. The vllm-metal patch shipped in the package provides the seam ([patch workflow](patches.md)).
+- `VLLM_TBCCL_BACKEND=metal` (or `auto` when vllm-metal is installed) makes vllm-tbccl decline to be the platform plugin on that node and attach through vllm-metal's hooks `VLLM_METAL_PP_TRANSPORT_CLS` (set to the vllm-tbccl transport class) and `VLLM_METAL_DIST_BACKEND=tbccl`. The seam is provided by the vllm-metal fork tag `v0.31.0-tbccl1` ([patch workflow](patches.md)).
 - A vllm-metal activation (an evaluated MLX array) is viewed as a zero-copy CPU torch tensor, sent through `ProcessGroupTBCCL`, and received on the CUDA side in the layout vLLM expects.
 - Toward an upstream-vLLM peer, the transport speaks vLLM's tensor-dict wire format and applies a per-architecture **boundary codec** that converts between vllm-metal's raw residual stream and vLLM's `hidden_states` plus `residual` pair (and the request-row permutation, see below). The codecs are an explicit allowlist, currently Llama and Qwen3; an architecture not on the list is rejected rather than assumed to behave like another. The architecture comes from the local model's `config.json`, or `VLLM_TBCCL_ARCHITECTURE`.
 
@@ -14,7 +14,7 @@ A pipeline activation has one row per scheduled token, and the two stages order 
 
 ## Validated configuration
 
-vLLM 0.31.0 on both hosts, vllm-metal 0.31.0 (`e7a0c90b`) carrying the transport seam, CPython 3.12, Qwen3-0.6B, Linux CUDA and Mac Metal over Thunderbolt 4 in both pipeline orders: strict prompts and prompts up to 3,507 tokens token-identical to the single-rank CUDA reference, rounds of 12 concurrent requests with no row-mixing divergence, cancellation followed by deterministic requests, ten engine create/destroy cycles with CUDA first and five with Metal first, and a byte-integrity check of 2 x 2,560 transfers per order with no mismatching element. See the [validation report](../validation/0.2.0.md).
+vLLM 0.31.0 on both hosts, vllm-metal fork `v0.31.0-tbccl1` (upstream 0.31.0, `e7a0c90b`, plus the transport seam), CPython 3.12, Qwen3-0.6B, Linux CUDA and Mac Metal over Thunderbolt 4 in both pipeline orders: strict prompts and prompts up to 3,507 tokens token-identical to the single-rank CUDA reference, rounds of 12 concurrent requests with no row-mixing divergence, cancellation followed by deterministic requests, ten engine create/destroy cycles with CUDA first and five with Metal first, and a byte-integrity check of 2 x 2,560 transfers per order with no mismatching element. See the [validation report](../validation/0.2.0.md).
 
 ## Optional
 
@@ -22,4 +22,4 @@ vLLM 0.31.0 on both hosts, vllm-metal 0.31.0 (`e7a0c90b`) carrying the transport
 
 ## Limits
 
-See [known limitations](../project/limitations.md) for the full list: a single validated model (Qwen3-0.6B), two boundary codecs, vllm-metal 0.31.0 with the transport seam patch required, and the vLLM lifecycle behaviors (a dead headless worker is not detected by the leader; vLLM leaks three file descriptors per process-group create and destroy cycle on macOS). None of these is a TBCCL transport failure.
+See [known limitations](../project/limitations.md) for the full list: a single validated model (Qwen3-0.6B), two boundary codecs, the vllm-metal fork tag `v0.31.0-tbccl1` required, and the vLLM lifecycle behaviors (a dead headless worker is not detected by the leader; vLLM leaks three file descriptors per process-group create and destroy cycle on macOS). None of these is a TBCCL transport failure.

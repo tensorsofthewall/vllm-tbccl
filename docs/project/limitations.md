@@ -10,7 +10,7 @@ Each limitation is labelled with the project that owns it, so you can tell a TBC
 | Models | vllm-tbccl | one model validated (Qwen3-0.6B); larger models and other architectures are not validated. The Metal boundary codecs are an allowlist: Llama and Qwen3 only |
 | Python and PyTorch | vllm-tbccl | CPython 3.12 and 3.13 and PyTorch 2.13.x only. The CUDA and Metal pairing needs Python 3.12 on the Mac, because vllm-metal 0.31.0 and vLLM's macOS wheel are CPython 3.12; mixed minors across hosts (3.13 Linux with 3.12 Mac) were exercised once (see validation) and the minors should match |
 | vLLM versions | vllm-tbccl | 0.31.0 only; other versions (including 0.30.0, the validated version of 0.2.0rc1) warn and are not claimed |
-| Metal pairing and vllm-metal | vllm-tbccl / vllm-metal | the Metal pairing needs vllm-metal 0.31.0 carrying the transport seam patch (a generic extension point not yet in upstream vllm-metal); the patch targets that exact revision |
+| Metal pairing and vllm-metal | vllm-tbccl / vllm-metal | the Metal pairing needs the vllm-metal fork tag `v0.31.0-tbccl1` (0.31.0 plus the transport seam) (a generic extension point not yet in upstream vllm-metal); the patch targets that exact revision |
 | Linux with a CPU-only PyTorch | vllm-tbccl | the Linux wheel needs the CUDA 13 build of PyTorch |
 | Reductions beyond `Sum`, FP8/INT4 reductions, recovery after a communicator failure | TBCCL | see the TBCCL limitations |
 
@@ -46,5 +46,5 @@ These are vLLM behaviors, **not** TBCCL transport failures: the TBCCL backend fa
 | a Mac with vllm-metal installed should use the CPU pairing | `VLLM_TBCCL_BACKEND=torch` |
 | a mixed CUDA and CPU pair asserts in the model runner | `VLLM_USE_V2_MODEL_RUNNER=0` on both hosts |
 | a Mac node hangs at start | answer the macOS firewall / Local Network prompt from a local session; run the node in a live terminal or SSH session |
-| the vllm-metal patch does not apply | [patch workflow](../guides/patches.md) |
+| vllm-metal lacks the transport seam | [patch workflow](../guides/patches.md) |
 | after a dead headless node or an unclean stop | stop both nodes explicitly and restart them; do not rely on the leader to notice |

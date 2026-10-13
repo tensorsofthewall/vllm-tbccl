@@ -4,7 +4,7 @@ This is a complete launch of one vLLM pipeline across two machines: a **Linux CU
 
 ## What you need
 
-- vllm-tbccl [installed](install.md) on **both** machines (the same version), vLLM 0.31.0 on both (Python 3.12 on both is the validated combination), and for the Metal node vllm-metal 0.31.0 with the [transport patch](../guides/patches.md).
+- vllm-tbccl [installed](install.md) on **both** machines (the same version), vLLM 0.31.0 on both (Python 3.12 on both is the validated combination), and for the Metal node the vllm-metal fork tag `v0.31.0-tbccl1` ([install](install.md)).
 - A model directory that exists locally on **both** machines (this guide uses Qwen3-0.6B). Nothing here downloads weights.
 - A direct network path between the nodes that both can reach. The example uses a Thunderbolt link: Linux `192.168.3.2`, Mac `192.168.3.1` ([link setup](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-link.html)). A plain LAN does not work for the pipeline because the executor's reverse-direction connections are blocked by ordinary firewalls ([limitations](../project/limitations.md)).
 - On the Mac, run the node in a live terminal or SSH session and answer the macOS firewall / Local Network prompt once.

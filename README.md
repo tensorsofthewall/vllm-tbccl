@@ -4,7 +4,7 @@
 
 vllm-tbccl is an out-of-tree [vLLM](https://github.com/vllm-project/vllm) platform plugin that lets one vLLM pipeline span machines with different accelerators, for example a Linux host with an NVIDIA GPU and a Mac with Apple silicon, joined by a direct Thunderbolt 4 link or any TCP network, with no NCCL data path. It carries vLLM's device-group communication (and, with [vllm-metal](https://github.com/vllm-project/vllm-metal), its pipeline activations) over [TBCCL](https://github.com/tensorsofthewall/tbccl).
 
-> **Status:** release candidate **0.2.0rc1** (pre-release, experimental; not production-ready). The final 0.2.0 has not been released. **0.2.0rc1 has a known correctness defect** for CUDA and Metal pipelines under concurrent requests (row order between the stages; fixed on `main`, see the [changelog](CHANGELOG.md)); the CUDA and CPU pairing and sequential requests were not affected.
+> **Status:** release candidate **0.2.0rc2** (pre-release, experimental; not production-ready). The final 0.2.0 has not been released. 0.2.0rc1 had a correctness defect for CUDA and Metal pipelines under concurrent requests (row order between the stages); it is fixed in 0.2.0rc2, see the [changelog](CHANGELOG.md). Do not use 0.2.0rc1.
 
 vllm-tbccl is **standalone**: the wheel carries its own small native c10d backend, statically linked to libtbccl's stable C ABI. It owns no transport or algorithm, and it does **not** use or require torch-tbccl (or any other TBCCL adapter).
 
@@ -19,7 +19,7 @@ Two-stage pipeline parallelism (`PP=2`, `TP=1`, two-rank groups) in two pairings
 | Pairing | vLLM | Validated model |
 |---|---|---|
 | Linux **CUDA** node and a **CPU** node (a Mac) over Thunderbolt 4 | **0.31.0**, unmodified | Qwen3-0.6B |
-| Linux **CUDA** node and a Mac **Metal** (Apple GPU) node over Thunderbolt 4, in either pipeline order | **0.31.0**, unmodified, plus [vllm-metal](https://github.com/vllm-project/vllm-metal) **0.31.0** with the transport patch shipped in this package | Qwen3-0.6B |
+| Linux **CUDA** node and a Mac **Metal** (Apple GPU) node over Thunderbolt 4, in either pipeline order | **0.31.0**, unmodified, plus the [vllm-metal fork](https://github.com/tensorsofthewall/vllm-metal) at tag `v0.31.0-tbccl1` (vllm-metal 0.31.0 plus a generic transport seam) | Qwen3-0.6B |
 
 The stack is Python 3.12 or 3.13 (the Mac side of the CUDA and Metal pairing is Python 3.12, which is what vllm-metal 0.31.0 and vLLM's macOS wheel are built for; use the same minor on both hosts), PyTorch 2.13.x and TBCCL C ABI 1 / wire protocol 4. Other versions warn once at plugin activation and nothing is claimed for them. Tensor parallelism above 1 and other models are not validated ([known limitations](docs/project/limitations.md)).
 
@@ -54,7 +54,7 @@ Hosted documentation: https://vllm-tbccl.tensorsofthewall.com/ (`latest` is deve
 
 ## Known limitations
 
-Pipeline parallelism with two stages only; one validated model; the Metal pairing needs vllm-metal 0.31.0 with the shipped transport patch; a dead worker on the headless node is **not detected by vLLM's leader** (an upstream vLLM limitation, not a TBCCL transport failure). See [known limitations](docs/project/limitations.md).
+Pipeline parallelism with two stages only; one validated model; the Metal pairing needs the vllm-metal fork tag `v0.31.0-tbccl1` (vllm-metal 0.31.0 plus the transport seam); a dead worker on the headless node is **not detected by vLLM's leader** (an upstream vLLM limitation, not a TBCCL transport failure). See [known limitations](docs/project/limitations.md).
 
 ## Development
 

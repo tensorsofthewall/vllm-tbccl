@@ -2,7 +2,7 @@
   "schema_version": 1,
   "project": "vllm-tbccl",
   "package": {
-    "development_version": "0.2.0rc1",
+    "development_version": "0.2.0rc2",
     "release_candidate": true,
     "target_release": "0.2.0",
     "released": false
@@ -31,7 +31,10 @@
       "version": "0.31.0",
       "revision": "e7a0c90bec180e5dd4275c473fd7a36e709a930e",
       "transport_patch": "vllm-metal-0001-pluggable-pp-transport.patch",
-      "transport_patch_sha256": "f0a13f4874dbc7b95973f5e237cdd4b7d02108597dcc707b51cc95ca04c87b07"
+      "transport_patch_sha256": "af950dfc4da283efcbbd7e55dcf28d1ffe6d7d608ded034a6888ea56844b3756",
+      "fork": "tensorsofthewall/vllm-metal",
+      "fork_tag": "v0.31.0-tbccl1",
+      "fork_revision": "fa4f934586bc27ac974a54183237594d1dc28fc5"
     },
     "mlx": {
       "validated": "0.32.1"
@@ -84,7 +87,7 @@
       "python": "3.12",
       "tbccl_wire_protocol": 4,
       "needs": [
-        "vllm-metal 0.31.0 with patches/vllm-metal-0001-pluggable-pp-transport.patch"
+        "vllm-metal fork tensorsofthewall/vllm-metal at tag v0.31.0-tbccl1 (fa4f934586bc27ac974a54183237594d1dc28fc5; upstream v0.31.0 plus the transport seam)"
       ]
     }
   ]

@@ -23,7 +23,7 @@ Find the symptom, check the likely cause with the diagnostic, apply the fix. Sta
 | the engine cannot form the cross-host pipeline over a LAN | the multiprocessing executor's reverse-direction queues are blocked by the firewall (vLLM) | try the direct link | use a direct link such as Thunderbolt 4 between the nodes |
 | timeout waiting for the other node | wrong `--master-addr`, `VLLM_HOST_IP` or `TBCCL_LOCAL_ENDPOINT` host; node not started; firewall prompt on the Mac unanswered | `ping` the peer; check the prompt | give each node its own link address; start both; answer the prompt, run in a live session |
 | the Metal node rejects an architecture | the boundary-codec allowlist covers Llama and Qwen3 only (vllm-tbccl) | the error names the architecture | use a supported architecture or set `VLLM_TBCCL_ARCHITECTURE` only if it is genuinely compatible |
-| the vllm-metal patch does not apply | the patch predates your vllm-metal revision | `git apply --check` | [patch workflow](patches.md) |
+| vllm-metal lacks the transport seam | an upstream vllm-metal was installed instead of the fork tag `v0.31.0-tbccl1` | `python -c "import vllm_metal.envs as e; print('VLLM_METAL_PP_TRANSPORT_CLS' in e.environment_variables)"` | [patch workflow](patches.md) |
 
 ## While running and stopping
 

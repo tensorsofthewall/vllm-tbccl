@@ -1,4 +1,4 @@
-From 3e9bcb7245d66ca6446781328d832cae2ffcfd3f Mon Sep 17 00:00:00 2001
+From fa4f934586bc27ac974a54183237594d1dc28fc5 Mon Sep 17 00:00:00 2001
 From: Sandesh Bharadwaj <34365552+tensorsofthewall@users.noreply.github.com>
 Date: Tue, 6 Oct 2026 16:42:14 +0400
 Subject: [PATCH] Make pipeline-parallel transport pluggable
