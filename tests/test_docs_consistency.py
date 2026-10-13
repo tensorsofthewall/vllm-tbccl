@@ -57,7 +57,7 @@ def test_documented_versions_match_the_manifest():
     assert metal["fork"] == "tensorsofthewall/vllm-metal" and metal["fork_tag"] == "v0.31.0-tbccl1"
     for page in (install, _read("docs", "guides", "cuda-metal.md")):
         assert metal["fork_tag"] in page
-    assert "/mnt/BigChonk" not in install and "git apply" not in install
+    assert ("/mnt" + "/BigChonk") not in install and "git apply" not in install
     assert "**0.31.0**" in install and "0.30.0" not in manifest["frameworks"]["vllm"]["supported"]
 
 
