@@ -8,9 +8,9 @@ Each limitation is labelled with the project that owns it, so you can tell a TBC
 |---|---|---|
 | Parallelism | vllm-tbccl | two-stage pipeline parallelism (`PP=2`, `TP=1`) with two-rank groups. `reduce_scatter` and `gather` raise `NotImplementedError`; tensor parallelism above 1 was not exercised |
 | Models | vllm-tbccl | one model validated (Qwen3-0.6B); larger models and other architectures are not validated. The Metal boundary codecs are an allowlist: Llama and Qwen3 only |
-| Python and PyTorch | vllm-tbccl | CPython 3.13 and PyTorch 2.13.x only |
-| vLLM versions | vllm-tbccl | 0.30.0 (Metal pairing) and 0.31.0 (CPU pairing); other versions warn and are not claimed |
-| Metal pairing and vLLM 0.31.0 | upstream vllm-metal | vllm-metal does not run on vLLM 0.31.0 yet, so the Metal pairing is tied to 0.30.0 |
+| Python and PyTorch | vllm-tbccl | CPython 3.12 and 3.13 and PyTorch 2.13.x only. The CUDA and Metal pairing needs Python 3.12 on the Mac, because vllm-metal 0.31.0 and vLLM's macOS wheel are CPython 3.12; mixed minors across hosts (3.13 Linux with 3.12 Mac) were exercised once (see validation) and the minors should match |
+| vLLM versions | vllm-tbccl | 0.31.0 only; other versions (including 0.30.0, the validated version of 0.2.0rc1) warn and are not claimed |
+| Metal pairing and vllm-metal | vllm-tbccl / vllm-metal | the Metal pairing needs vllm-metal 0.31.0 carrying the transport seam patch (a generic extension point not yet in upstream vllm-metal); the patch targets that exact revision |
 | Linux with a CPU-only PyTorch | vllm-tbccl | the Linux wheel needs the CUDA 13 build of PyTorch |
 | Reductions beyond `Sum`, FP8/INT4 reductions, recovery after a communicator failure | TBCCL | see the TBCCL limitations |
 
@@ -31,7 +31,7 @@ These are vLLM behaviors, **not** TBCCL transport failures: the TBCCL backend fa
 |---|---|
 | Dead headless worker is not detected | vLLM's multi-node executor has no liveness check on a dead headless worker. If the headless node's worker process dies, the leader's engine stays stuck waiting for its response (no TBCCL call is involved). Use client timeouts and an external liveness check |
 | Headless follower lingers after a graceful leader stop | the headless node's process may keep running in vLLM's ZMQ poll after the leader exits; stop it explicitly |
-| File descriptors on macOS | vLLM 0.30.0 leaks three file descriptors per process-group create and destroy cycle on macOS |
+| File descriptors on macOS | vLLM (0.30.0 and 0.31.0 measured) leaks three descriptors (a kqueue, a handle on `/` and `/dev/null`) per process-group create and destroy cycle on macOS; a control with vLLM's gloo groups and no TBCCL leaks about 45 per cycle. A running engine does not grow (checked before and after load, ten cycles) |
 | LAN firewalls | the multiprocessing executor's reverse-direction connections are blocked by an ordinary LAN firewall, so cross-host engines need a direct link |
 
 ## Performance

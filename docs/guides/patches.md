@@ -12,7 +12,7 @@ python -m vllm_tbccl.patches --path vllm-metal-0001-pluggable-pp-transport.patch
 
 | Patch | Applies to | Needed? |
 |---|---|---|
-| `vllm-metal-0001-pluggable-pp-transport.patch` | [vllm-metal](https://github.com/vllm-project/vllm-metal) | **Yes, for the CUDA and Metal pairing** (vLLM 0.30.0). Not needed for the CUDA and CPU pairing. |
+| `vllm-metal-0001-pluggable-pp-transport.patch` | [vllm-metal](https://github.com/vllm-project/vllm-metal) | **Yes, for the CUDA and Metal pairing** (vllm-metal 0.31.0 with vLLM 0.31.0). Not needed for the CUDA and CPU pairing. |
 | `0001-generic-heterogeneous-hooks.patch` | vLLM 0.30.0 | **No.** A legacy patch kept for history. vLLM 0.30.0 and 0.31.0 run unmodified with the plugin; do not apply it. |
 
 ## What the vllm-metal patch does
@@ -29,12 +29,11 @@ vllm-tbccl supplies a transport class that sends the activations over TBCCL. Wit
 
 | | |
 |---|---|
-| vLLM | 0.30.0 (vllm-metal does not run on 0.31.0 yet) |
-| vllm-metal | the revision the transport seam was developed against; the validation used vllm-metal commit `d8cb131` (2026-10-02) carrying the same seam |
+| vLLM | 0.31.0 |
+| vllm-metal | **0.31.0**, commit `e7a0c90bec180e5dd4275c473fd7a36e709a930e` (tag `v0.31.0`, 2026-10-12) |
+| patch SHA-256 | `f0a13f4874dbc7b95973f5e237cdd4b7d02108597dcc707b51cc95ca04c87b07` |
 
-```{important}
-The patch file was generated against an earlier vllm-metal revision than the one used for validation. Against `d8cb131` every file applies cleanly **except `vllm_metal/envs.py`** (two hunks: the declarations of the two new environment switches), because vllm-metal reworked its environment handling after the patch was written. Use `git apply --reject` (below) and add the two switches to `envs.py` by hand, in the style of the neighboring entries. Refreshing the patch against the validated revision is tracked for the final release.
-```
+The patch was generated with `git format-patch` from a commit on top of that exact vllm-metal revision and applies to it with `git apply --check` and `git am` without changes. It adds focused tests (`tests/test_pipeline_transport.py`, two environment-variable cases in `tests/test_envs.py`) and documents the two switches in vllm-metal's `docs/configuration.md`; with the patch applied vllm-metal's own test-suite results are unchanged (the same 44 tests that need model downloads fail on a clean checkout and on the patched one). It targets one exact upstream revision: on a later vllm-metal it may need refreshing, and `git apply --check` tells you.
 
 ## Inspect, apply, verify
 
@@ -57,13 +56,7 @@ The patch file was generated against an earlier vllm-metal revision than the one
    git -C <vllm-metal checkout> am "$P"
    ```
 
-   If `--check` reports that only `vllm_metal/envs.py` fails (the case on the validated revision `d8cb131`), apply everything else and keep the rejected hunks for reference:
-
-   ```sh
-   git -C <vllm-metal checkout> apply --reject "$P"      # writes vllm_metal/envs.py.rej with the two failed hunks
-   ```
-
-   Then add to `vllm_metal/envs.py`, following how the file declares its other switches today: `VLLM_METAL_PP_TRANSPORT_CLS` (optional string, default unset: the built-in MLX ring) and `VLLM_METAL_DIST_BACKEND` (string, default `gloo`). Delete the `.rej` file afterwards. Any other failing file means your vllm-metal revision differs more; use the validated revision.
+   If `--check` fails, your vllm-metal differs from `v0.31.0`; check out the tag (`git checkout v0.31.0`) rather than editing the patch by hand. A refreshed patch for a newer vllm-metal is produced from a commit on top of that revision with `git format-patch`.
 
 4. **Verify** the seam is present:
 

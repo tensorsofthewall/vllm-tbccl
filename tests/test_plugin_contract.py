@@ -51,7 +51,7 @@ def test_metal_platform_stays_owner_when_both_plugins_are_installed():
 def test_supported_vllm_tuple_is_declared():
     from vllm_tbccl import platform
 
-    assert platform.SUPPORTED_VLLM == ("0.30.0", "0.31.0")
+    assert platform.SUPPORTED_VLLM == ("0.31.0",)
 
 
 def _record(monkeypatch):

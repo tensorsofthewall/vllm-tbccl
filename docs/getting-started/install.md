@@ -7,40 +7,42 @@ vllm-tbccl installs as a separate package into the environment that holds vLLM, 
 | Pairing | vLLM | Notes |
 |---|---|---|
 | CUDA node and CPU node | **0.31.0** | validated on a Linux CUDA host and a Mac CPU host over Thunderbolt 4 |
-| CUDA node and Metal node | **0.30.0** | needs [vllm-metal](https://github.com/vllm-project/vllm-metal) with the transport patch shipped in this package ([patch workflow](../guides/patches.md)); validated on a Linux CUDA host and a Mac Metal host over Thunderbolt 4 |
+| CUDA node and Metal node | **0.31.0** | needs [vllm-metal](https://github.com/vllm-project/vllm-metal) **0.31.0** with the transport patch shipped in this package ([patch workflow](../guides/patches.md)); validated on a Linux CUDA host and a Mac Metal host over Thunderbolt 4 in both pipeline orders |
 
-Both use pipeline parallelism with two stages (`PP=2`, `TP=1`) and two-rank groups. `SUPPORTED_VLLM` in `vllm_tbccl/platform.py` is `("0.30.0", "0.31.0")`; other vLLM versions warn once when the plugin activates and nothing is claimed for them. vllm-metal's current head does not run on vLLM 0.31.0, so the Metal pairing uses 0.30.0. See [compatibility](../reference/compatibility.md).
+Both use pipeline parallelism with two stages (`PP=2`, `TP=1`) and two-rank groups. `SUPPORTED_VLLM` in `vllm_tbccl/platform.py` is `("0.31.0",)`; other vLLM versions (including 0.30.0, which the 0.2.0rc1 validation used) warn once when the plugin activates and nothing is claimed for them. See [compatibility](../reference/compatibility.md).
 
 ## Requirements
 
 | | Linux x86-64 (CUDA node) | macOS arm64 (CPU or Metal node) |
 |---|---|---|
-| Python | **3.13 only** (the wheel is `cp313`) | **3.13 only** |
+| Python | **3.12 or 3.13** (wheels `cp312` and `cp313`) | **3.12** for the Metal pairing (vllm-metal 0.31.0 and vLLM's macOS wheel are CPython 3.12); 3.12 or 3.13 for the CPU pairing |
 | PyTorch | **2.13.x, the CUDA 13 build** (`+cu130`); vLLM pins the exact version | 2.13.x |
-| vLLM | 0.31.0 or 0.30.0, from PyPI | 0.31.0 (CPU) or 0.30.0 (Metal), built for macOS as vllm-metal's installer does |
+| vLLM | 0.31.0, from PyPI | 0.31.0, the prebuilt macOS wheel that vllm-metal's installer uses |
 | Wheel | `manylinux_2_27_x86_64` | `macosx_14_0_arm64` |
 
 ```{warning}
 The Linux wheel is linked against `libtorch_cuda.so` and `libc10_cuda.so`: it needs the **CUDA 13 build of PyTorch**, which is what vLLM installs when you use the `cu130` index below. A CPU-only PyTorch for Linux does not work. Use one torch version in the whole environment, install the wheel with `--no-deps` and never use `--reinstall`, which rewrites torch.
 ```
 
-## Install the release-candidate wheel
+## Install a wheel
 
-The 0.2.0rc1 wheels and sdist are attached to the GitHub pre-release [`v0.2.0rc1`](https://github.com/tensorsofthewall/vllm-tbccl/releases/tag/v0.2.0rc1). They are not published on PyPI or TestPyPI.
+The 0.2.0rc1 wheels (`cp313` only) and sdist are attached to the GitHub pre-release [`v0.2.0rc1`](https://github.com/tensorsofthewall/vllm-tbccl/releases/tag/v0.2.0rc1). They are not published on PyPI or TestPyPI. ```{warning}
+0.2.0rc1 derives the CUDA and Metal row order from the scheduler output and can exchange activations between concurrent requests; do not use it for that pairing (see the [changelog](https://github.com/tensorsofthewall/vllm-tbccl/blob/main/CHANGELOG.md)). The fix is on `main`; wheels for `cp312` and `cp313` are built by the `release-artifacts` workflow (or build from source below) until the next release.
+```
 
 **Linux CUDA node:**
 
 ```sh
-uv venv --python 3.13 .venv && . .venv/bin/activate
-uv pip install vllm==0.30.0 --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match       # 0.31.0 for the CPU pairing
-uv pip install --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.0rc1/vllm_tbccl-0.2.0rc1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+uv venv --python 3.12 .venv && . .venv/bin/activate
+uv pip install vllm==0.31.0 --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+uv pip install --no-deps ./vllm_tbccl-<version>-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl      # a wheel built from this version (cp313 for Python 3.13)
 python -m vllm_tbccl.info
 ```
 
-**Mac node:** install vLLM for macOS (for the Metal pairing, vLLM 0.30.0 and vllm-metal, following the vllm-metal project's own instructions), then:
+**Mac node:** install vLLM 0.31.0 for macOS (for the Metal pairing also vllm-metal 0.31.0 with the transport patch, following the vllm-metal project's own instructions), using Python 3.12, then:
 
 ```sh
-uv pip install --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.0rc1/vllm_tbccl-0.2.0rc1-cp313-cp313-macosx_14_0_arm64.whl
+uv pip install --no-deps ./vllm_tbccl-<version>-cp312-cp312-macosx_14_0_arm64.whl
 python -m vllm_tbccl.info
 ```
 
@@ -59,7 +61,7 @@ prints the versions of every layer as JSON: the package, torch (running and buil
 Building is needed only without a matching wheel or to change the code. Native module and TBCCL are build-time inputs:
 
 ```sh
-uv venv --python 3.13 .venv && . .venv/bin/activate
+uv venv --python 3.12 .venv && . .venv/bin/activate
 uv pip install vllm==0.31.0 ...            # as above, for your pairing
 TBCCL_ROOT=<installed tbccl prefix> uv pip install --no-build-isolation --no-deps -e .
 ```

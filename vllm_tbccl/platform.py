@@ -8,8 +8,8 @@ VLLM_TBCCL_PLATFORM=cpu|cuda forces the base platform (default: cuda when a CUDA
 import os
 import sys
 
-# vLLM versions this package was validated against. Other versions are used at the user's risk and warn once.
-SUPPORTED_VLLM = ("0.30.0", "0.31.0")
+# The vLLM version this package is validated against (0.30.0 was validated for 0.2.0rc1 and is historical). Other versions are used at the user's risk and warn once.
+SUPPORTED_VLLM = ("0.31.0",)
 
 
 def _check_vllm_version() -> None:

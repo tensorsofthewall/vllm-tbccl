@@ -8,18 +8,33 @@
     "released": false
   },
   "python": {
-    "requires": ">=3.13,<3.14",
-    "validated": "3.13"
+    "requires": ">=3.12,<3.14",
+    "validated": [
+      "3.12",
+      "3.13"
+    ],
+    "note": "The CUDA and Metal pairing needs CPython 3.12 on the Mac (vLLM's macOS wheel and vllm-metal 0.31.0 are CPython 3.12) and both stages should use the same minor; Linux CUDA and CPU stages run on 3.12 and 3.13."
   },
   "frameworks": {
     "vllm": {
       "supported": [
-        "0.30.0",
         "0.31.0"
+      ],
+      "historically_validated": [
+        "0.30.0"
       ]
     },
     "torch": {
       "validated": "2.13.0"
+    },
+    "vllm_metal": {
+      "version": "0.31.0",
+      "revision": "e7a0c90bec180e5dd4275c473fd7a36e709a930e",
+      "transport_patch": "vllm-metal-0001-pluggable-pp-transport.patch",
+      "transport_patch_sha256": "f0a13f4874dbc7b95973f5e237cdd4b7d02108597dcc707b51cc95ca04c87b07"
+    },
+    "mlx": {
+      "validated": "0.32.1"
     }
   },
   "requires": {
@@ -45,22 +60,31 @@
         "pp": 2,
         "tp": 1
       },
-      "model": "Qwen3-0.6B"
+      "model": "Qwen3-0.6B",
+      "python": "3.12",
+      "tbccl_wire_protocol": 4
     },
     {
       "name": "cuda-metal-thunderbolt",
-      "vllm": "0.30.0",
+      "vllm": "0.31.0",
+      "vllm_metal": "0.31.0",
       "stages": [
         "linux-cuda",
         "macos-metal"
+      ],
+      "orientations": [
+        "cuda-rank0-metal-rank1",
+        "metal-rank0-cuda-rank1"
       ],
       "parallelism": {
         "pp": 2,
         "tp": 1
       },
       "model": "Qwen3-0.6B",
+      "python": "3.12",
+      "tbccl_wire_protocol": 4,
       "needs": [
-        "vllm-metal with patches/vllm-metal-0001-pluggable-pp-transport.patch"
+        "vllm-metal 0.31.0 with patches/vllm-metal-0001-pluggable-pp-transport.patch"
       ]
     }
   ]

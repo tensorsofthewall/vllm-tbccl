@@ -1,4 +1,4 @@
-"""vLLM's pipeline tensor-dict wire format, reproduced exactly (vLLM 0.30.0 GroupCoordinator.send_object/recv_object):
+"""vLLM's pipeline tensor-dict wire format, reproduced exactly (GroupCoordinator.send_object/recv_object, identical in vLLM 0.30.0 and 0.31.0; pinned by tests/test_wire_vllm_parity.py):
 an 8-byte int64 size tensor then a pickled uint8 payload on the CPU (control) group; tensors afterwards on the device group."""
 import pickle
 

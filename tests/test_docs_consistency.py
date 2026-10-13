@@ -47,8 +47,13 @@ def test_documented_versions_match_the_manifest():
     assert version in compat and version in install
     for v in manifest["frameworks"]["vllm"]["supported"]:
         assert v in compat and v in install
-    assert manifest["python"]["requires"] == ">=3.13,<3.14"
-    assert "3.13 only" in compat and "3.10 or newer" not in compat
+    assert manifest["python"]["requires"] == ">=3.12,<3.14"
+    assert "3.12 and 3.13" in compat and "3.13 only" not in compat and "3.10 or newer" not in compat
+    metal = manifest["frameworks"]["vllm_metal"]
+    patches = _read("docs", "guides", "patches.md")
+    for text in (compat, patches):
+        assert metal["revision"] in text and metal["transport_patch_sha256"] in text and metal["version"] in text
+    assert "**0.31.0**" in install and "0.30.0" not in manifest["frameworks"]["vllm"]["supported"]
 
 
 def test_docs_state_the_standalone_architecture_and_no_registry_publication():

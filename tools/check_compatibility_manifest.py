@@ -25,6 +25,12 @@ checks = {
     "python.requires": (manifest["python"]["requires"], re.search(r'requires-python\s*=\s*"([^"]+)"', pyproject).group(1)),
     "frameworks.vllm.supported": (tuple(manifest["frameworks"]["vllm"]["supported"]), tuple(supported) if supported else None),
 }
+import hashlib
+
+metal = manifest["frameworks"]["vllm_metal"]
+patch = ROOT / "vllm_tbccl" / "patches" / metal["transport_patch"]
+checks["frameworks.vllm_metal.transport_patch_sha256"] = (metal["transport_patch_sha256"], hashlib.sha256(patch.read_bytes()).hexdigest())
+checks["python.validated is covered by python.requires"] = (True, all(v in ("3.12", "3.13") for v in manifest["python"]["validated"]) and ">=3.12,<3.14" == manifest["python"]["requires"])
 bad = [k for k, (declared, actual) in checks.items() if declared != actual]
 for k in bad:
     print(f"MISMATCH {k}: manifest {checks[k][0]!r}, sources {checks[k][1]!r}")
