@@ -19,8 +19,8 @@ Each limitation is labelled with the project that owns it, so you can tell a TBC
 | Item | State |
 |---|---|
 | Native vllm-metal MLX-ring pipeline parallelism | not exercised with this plugin |
-| The CUDA and CPU pairing on wire protocol 4 over the physical link | the unit and loopback suites were re-run at wire 4; the physical CUDA and CPU runs were recorded at wire protocol 3 and not repeated |
-| The CUDA and Metal pairing with the Mac as node 0 | validated on the development tree in both orientations; the release-candidate runs used the Linux node as node 0 |
+| Models other than Qwen3-0.6B, context lengths above about 3,500 tokens, more than 12 concurrent requests, sampling other than greedy | not run; the validation used greedy decoding of Qwen3-0.6B with prompts up to 3,507 tokens and 12 concurrent requests |
+| Mixed CPython minors (Linux 3.13 with Mac 3.12) | exercised for two engine cycles only; keep the minors the same |
 | Any link other than a direct Thunderbolt 4 connection | works in principle between hosts that can reach each other directly; not validated |
 
 ## Known upstream issues (vLLM)
