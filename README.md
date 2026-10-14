@@ -4,7 +4,7 @@
 
 vllm-tbccl is an out-of-tree [vLLM](https://github.com/vllm-project/vllm) platform plugin that lets one vLLM pipeline span machines with different accelerators, for example a Linux host with an NVIDIA GPU and a Mac with Apple silicon, joined by a direct Thunderbolt 4 link or any TCP network, with no NCCL data path. It carries vLLM's device-group communication (and, with [vllm-metal](https://github.com/vllm-project/vllm-metal), its pipeline activations) over [TBCCL](https://github.com/tensorsofthewall/tbccl).
 
-> **Status:** release candidate **0.2.0rc2** (pre-release, experimental; not production-ready). The final 0.2.0 has not been released. 0.2.0rc1 had a correctness defect for CUDA and Metal pipelines under concurrent requests (row order between the stages); it is fixed in 0.2.0rc2, see the [changelog](CHANGELOG.md). Do not use 0.2.0rc1.
+> **Status:** **0.2.0** (first release; experimental). 0.2.0rc1 had a correctness defect for CUDA and Metal pipelines under concurrent requests (row order between the stages); it is fixed since 0.2.0rc2, see the [changelog](CHANGELOG.md). Do not use 0.2.0rc1.
 
 vllm-tbccl is **standalone**: the wheel carries its own small native c10d backend, statically linked to libtbccl's stable C ABI. It owns no transport or algorithm, and it does **not** use or require torch-tbccl (or any other TBCCL adapter).
 
@@ -50,7 +50,7 @@ The authoritative version table is the ecosystem [compatibility matrix](https://
 
 ## Documentation
 
-Hosted documentation: https://vllm-tbccl.tensorsofthewall.com/ (`latest` is development documentation built from `main`; release-candidate versions appear as numbered versions; `stable` does not exist until the final release). Build it locally with `make docs`. Start with [getting started](docs/getting-started/index.md), the [patch workflow](docs/guides/patches.md), [troubleshooting](docs/guides/troubleshooting.md) and [known limitations](docs/project/limitations.md).
+Hosted documentation: https://vllm-tbccl.tensorsofthewall.com/ (`latest` is development documentation built from `main`; released versions appear as numbered versions and `stable` is the latest final release). Build it locally with `make docs`. Start with [getting started](docs/getting-started/index.md), the [patch workflow](docs/guides/patches.md), [troubleshooting](docs/guides/troubleshooting.md) and [known limitations](docs/project/limitations.md).
 
 ## Known limitations
 

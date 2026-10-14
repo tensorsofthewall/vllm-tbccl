@@ -26,7 +26,7 @@ The Linux wheel is linked against `libtorch_cuda.so` and `libc10_cuda.so`: it ne
 
 ## Install a wheel
 
-The 0.2.0rc2 wheels (`cp312` and `cp313`) and sdist are attached to the GitHub pre-release [`v0.2.0rc2`](https://github.com/tensorsofthewall/vllm-tbccl/releases/tag/v0.2.0rc2). They are not published on PyPI or TestPyPI.
+The 0.2.0 wheels (`cp312` and `cp313`) and sdist are attached to the GitHub release [`v0.2.0`](https://github.com/tensorsofthewall/vllm-tbccl/releases/tag/v0.2.0). They are not published on PyPI or TestPyPI.
 
 ```{warning}
 0.2.0rc1 (superseded) derived the CUDA and Metal row order from the scheduler output and could exchange activations between concurrent requests; use 0.2.0rc2 or later for that pairing (see the [changelog](https://github.com/tensorsofthewall/vllm-tbccl/blob/main/CHANGELOG.md)).
@@ -55,7 +55,7 @@ git clone --branch v0.31.0-tbccl1 --depth 1 https://github.com/tensorsofthewall/
 cd vllm-metal && ./install.sh && source .venv-vllm-metal/bin/activate
 ```
 
-The fork is pinned by tag, never by branch. The patch shipped in this package is a reference copy of the same change ([patch workflow](../guides/patches.md)).
+macOS asks, the first time a new Python interpreter listens on the network, whether to allow incoming connections; allow it, otherwise the Mac node waits silently for the pipeline peer. The fork is pinned by tag, never by branch. The patch shipped in this package is a reference copy of the same change ([patch workflow](../guides/patches.md)).
 
 ## Check the installation
 
