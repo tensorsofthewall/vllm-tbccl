@@ -1,6 +1,6 @@
 # Quickstart: a two-node PP=2 pipeline
 
-This is a complete launch of one vLLM pipeline across two machines: a **Linux CUDA node** (node 0, serves the API) and a **Mac Metal node** (node 1, headless), joined by a direct Thunderbolt 4 link. It is the configuration that was validated with the release-candidate wheels. A CUDA and CPU pair is at the end.
+This is a complete launch of one vLLM pipeline across two machines: a **Linux CUDA node** (node 0, serves the API) and a **Mac Metal node** (node 1, headless), joined by a direct Thunderbolt 4 link. It is the validated configuration (PP=2, TP=1, Qwen3-0.6B). A CUDA and CPU pair is at the end. Commands use the environments from [installing](install.md): `.venv` on the Linux node and the fork's `vllm-metal/.venv-vllm-metal` on the Metal Mac; the paths are relative to where you ran the install.
 
 ## What you need
 
@@ -32,7 +32,7 @@ COMMON="--served-model-name metal-pp-model --dtype bfloat16 --enforce-eager --no
 
 ```sh
 export VLLM_USE_V2_MODEL_RUNNER=0 VLLM_TBCCL_ENABLE=1 VLLM_HOST_IP=192.168.3.2 TBCCL_LOCAL_ENDPOINT=192.168.3.2:0
-vllm serve /path/to/Qwen3-0.6B $COMMON --node-rank 0 --gpu-memory-utilization 0.5 --host 192.168.3.2 --port 8170
+.venv/bin/vllm serve /path/to/Qwen3-0.6B $COMMON --node-rank 0 --gpu-memory-utilization 0.5 --host 192.168.3.2 --port 8170
 ```
 
 ## 3. Start the Mac node (node 1, headless)
@@ -40,7 +40,7 @@ vllm serve /path/to/Qwen3-0.6B $COMMON --node-rank 0 --gpu-memory-utilization 0.
 ```sh
 export VLLM_USE_V2_MODEL_RUNNER=0 VLLM_TBCCL_BACKEND=metal VLLM_TBCCL_ENABLE=1 \
        VLLM_HOST_IP=192.168.3.1 TBCCL_LOCAL_ENDPOINT=192.168.3.1:0
-vllm serve ~/models/Qwen3-0.6B $COMMON --node-rank 1 --gpu-memory-utilization 0.3 --headless
+vllm-metal/.venv-vllm-metal/bin/vllm serve ~/models/Qwen3-0.6B $COMMON --node-rank 1 --gpu-memory-utilization 0.3 --headless
 ```
 
 `TBCCL_LOCAL_ENDPOINT=<host>:0` lets every communicator choose its own free port pair on that host's link address. The port must be 0.
