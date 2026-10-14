@@ -28,7 +28,7 @@ vllm-tbccl does **not** use or require torch-tbccl. The two projects are peers o
 |---|---|
 | transport, collectives, CUDA staging | **libtbccl** (tbccl) |
 | the vLLM plugin, device communicator, thin worker subclasses, the bundled c10d backend, the Metal transport and boundary codecs | **vllm-tbccl** |
-| a generic pluggable pipeline-transport seam in vllm-metal | a patch carried in this package ([patch workflow](../guides/patches.md)), meant to be proposed upstream |
+| a generic pluggable pipeline-transport seam in vllm-metal | a maintained fork tag, `tensorsofthewall/vllm-metal@v0.31.0-tbccl1`, with a reference copy of the change carried in this package ([patch workflow](../guides/patches.md)); meant to be proposed upstream |
 | scheduling, the multi-node executor, worker-death detection | **upstream vLLM** |
 
 vllm-tbccl is not a vLLM fork. vLLM itself is used unmodified; every adaptation uses a public extension point.

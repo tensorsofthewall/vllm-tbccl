@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-tbccl"
-version = "0.2.0rc1"
+version = "0.2.0rc2"
 description = "Out-of-tree vLLM integration: vLLM device-group communication over TBCCL through a bundled, private c10d backend"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Sandesh Bharadwaj" }]
-requires-python = ">=3.13,<3.14"  # the tested tuple; the bundled native module is a cp313 extension
+requires-python = ">=3.12,<3.14"  # CPython 3.12 and 3.13; the bundled native module is a per-minor extension (cp312 or cp313)
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",

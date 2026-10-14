@@ -4,7 +4,7 @@ This is a complete launch of one vLLM pipeline across two machines: a **Linux CU
 
 ## What you need
 
-- vllm-tbccl [installed](install.md) on **both** machines (the same version), vLLM 0.30.0 on both, and for the Metal node vllm-metal with the [transport patch](../guides/patches.md).
+- vllm-tbccl [installed](install.md) on **both** machines (the same version), vLLM 0.31.0 on both (Python 3.12 on both is the validated combination), and for the Metal node the vllm-metal fork tag `v0.31.0-tbccl1` ([install](install.md)).
 - A model directory that exists locally on **both** machines (this guide uses Qwen3-0.6B). Nothing here downloads weights.
 - A direct network path between the nodes that both can reach. The example uses a Thunderbolt link: Linux `192.168.3.2`, Mac `192.168.3.1` ([link setup](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-link.html)). A plain LAN does not work for the pipeline because the executor's reverse-direction connections are blocked by ordinary firewalls ([limitations](../project/limitations.md)).
 - On the Mac, run the node in a live terminal or SSH session and answer the macOS firewall / Local Network prompt once.
@@ -38,12 +38,12 @@ vllm serve /path/to/Qwen3-0.6B $COMMON --node-rank 0 --gpu-memory-utilization 0.
 ## 3. Start the Mac node (node 1, headless)
 
 ```sh
-export VLLM_USE_V2_MODEL_RUNNER=0 VLLM_METAL_BUILD_FROM_SOURCE=1 VLLM_TBCCL_BACKEND=metal VLLM_TBCCL_ENABLE=1 \
+export VLLM_USE_V2_MODEL_RUNNER=0 VLLM_TBCCL_BACKEND=metal VLLM_TBCCL_ENABLE=1 \
        VLLM_HOST_IP=192.168.3.1 TBCCL_LOCAL_ENDPOINT=192.168.3.1:0
 vllm serve ~/models/Qwen3-0.6B $COMMON --node-rank 1 --gpu-memory-utilization 0.3 --headless
 ```
 
-`VLLM_METAL_BUILD_FROM_SOURCE=1` is a vllm-metal setting the validated runs used. `TBCCL_LOCAL_ENDPOINT=<host>:0` lets every communicator choose its own free port pair on that host's link address. The port must be 0.
+`TBCCL_LOCAL_ENDPOINT=<host>:0` lets every communicator choose its own free port pair on that host's link address. The port must be 0.
 
 Start the two commands within a minute or so of each other; the leader waits for the headless node. When the API server logs that it is ready, the pipeline is up.
 
@@ -75,4 +75,4 @@ VLLM_USE_V2_MODEL_RUNNER=0 examples/serve_pp2.sh 0 <master addr> <master port> <
 VLLM_USE_V2_MODEL_RUNNER=0 VLLM_TBCCL_BACKEND=torch examples/serve_pp2.sh 1 <master addr> <master port> <this host's link address> ~/path/to/model
 ```
 
-The script uses `--dtype float32` and a short context so a small model fits; edit it for your model. This pairing was physically validated on an earlier TBCCL wire protocol; see [validated configurations](../project/validated-configurations.md).
+The script uses `--dtype float32` and a short context so a small model fits; edit it for your model. This pairing was physically validated on TBCCL wire protocol 4 with vLLM 0.31.0; see [validated configurations](../project/validated-configurations.md).

@@ -9,7 +9,7 @@ vllm-tbccl has to connect vLLM stages that differ in platform (CUDA, CPU, Metal)
 
 ## Decision
 
-vLLM is used unmodified. Every adaptation uses a public extension point: the platform plugin entry point, the public `worker_cls` setting for thin worker subclasses, and a scoped `new_group` wrapper that is active only for callers in `vllm.distributed.parallel_state`. vllm-metal needs one generic change, a pluggable pipeline-transport seam with unchanged default behavior; it is carried as a patch file in `vllm_tbccl/patches/` and is meant to be proposed upstream separately. vllm-tbccl owns no transport or algorithm: anything missing belongs to TBCCL.
+vLLM is used unmodified. Every adaptation uses a public extension point: the platform plugin entry point, the public `worker_cls` setting for thin worker subclasses, and a scoped `new_group` wrapper that is active only for callers in `vllm.distributed.parallel_state`. vllm-metal needs one generic change, a pluggable pipeline-transport seam with unchanged default behavior; it is published as the immutable fork tag `tensorsofthewall/vllm-metal@v0.31.0-tbccl1` (a reference patch is kept in `vllm_tbccl/patches/`) and is meant to be proposed upstream separately. vllm-tbccl owns no transport or algorithm: anything missing belongs to TBCCL.
 
 ## Consequences
 

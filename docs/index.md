@@ -3,7 +3,7 @@
 A vLLM platform plugin that lets one vLLM pipeline span machines with different accelerators (for example a Linux CUDA node and a Mac), carrying vLLM's device-group communication over TBCCL through its own bundled backend. It is standalone and does not require torch-tbccl.
 
 ```{note}
-**Release candidate.** The current release candidate is 0.2.0rc1 (vLLM 0.30.0 and 0.31.0, PyTorch 2.13.x, CPython 3.13, TBCCL C ABI 1 / wire protocol 4). It is a pre-release for validation, not for production use. The final 0.2.0 has not been released.
+**Release candidate.** The current release candidate is 0.2.0rc2 (vLLM 0.31.0, PyTorch 2.13.x, CPython 3.12 and 3.13, TBCCL C ABI 1 / wire protocol 4). It is a pre-release for validation, not for production use. The final 0.2.0 has not been released.
 ```
 
 vllm-tbccl is one of three independent adapters over the [TBCCL](https://tbccl.tensorsofthewall.com/en/latest/) runtime; the others are torch-tbccl (PyTorch) and exo-tbccl (exo). It depends on none of them. See the [ecosystem overview](project/ecosystem.md).

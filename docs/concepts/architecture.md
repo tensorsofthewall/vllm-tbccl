@@ -37,7 +37,7 @@ vllm-tbccl is an out-of-tree vLLM platform plugin. It owns no transport, no algo
 
 ## Why there are patches, and why this is not a fork
 
-vLLM is not modified: every adaptation uses a public extension point (the platform plugin entry point, `worker_cls`, a scoped `new_group` wrapper). The one change vllm-metal needs, a generic pluggable pipeline-transport seam with unchanged default behavior, cannot be made from outside, so it is carried as a patch file and is meant to be proposed upstream ({doc}`../adr/0001-no-in-place-patches`). A legacy vLLM patch also ships, for history only. Details and the apply/verify procedure: [patch workflow](../guides/patches.md).
+vLLM is not modified: every adaptation uses a public extension point (the platform plugin entry point, `worker_cls`, a scoped `new_group` wrapper). The one change vllm-metal needs, a generic pluggable pipeline-transport seam with unchanged default behavior, cannot be made from outside, so it is maintained in a vllm-metal fork tag (`v0.31.0-tbccl1`), with a reference patch file carried in this package, and is meant to be proposed upstream ({doc}`../adr/0001-no-in-place-patches`). A legacy vLLM patch also ships, for history only. Details and the apply/verify procedure: [patch workflow](../guides/patches.md).
 
 ## Data path
 

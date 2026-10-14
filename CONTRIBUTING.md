@@ -4,7 +4,7 @@ Thank you for contributing. This document describes how to set up, test and subm
 
 ## Development setup
 
-You need Python 3.13, vLLM (0.31.0 for CUDA/CPU, 0.30.0 for CUDA+Metal) and an installed TBCCL package to build the native module against (`TBCCL_ROOT`), all in one environment with a single torch version. Use `uv`.
+You need Python 3.12 or 3.13, vLLM 0.31.0 (and vllm-metal 0.31.0 with the shipped transport patch for CUDA+Metal) and an installed TBCCL package to build the native module against (`TBCCL_ROOT`), all in one environment with a single torch version. Use `uv`.
 
 ## Building and testing
 

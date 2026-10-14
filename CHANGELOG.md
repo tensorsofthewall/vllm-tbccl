@@ -1,6 +1,19 @@
 # Changelog
 
-All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. vllm-tbccl has had no final release. 0.2.0rc1 is a release candidate (pre-release), not production-ready.
+All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. vllm-tbccl has had no final release. 0.2.0rc2 is a release candidate (pre-release), not production-ready.
+
+## 0.2.0rc2 (release candidate)
+
+Supersedes 0.2.0rc1, which must not be used for CUDA and Metal pipelines (see Fixed). The CUDA and CPU pairing was not affected.
+
+### Fixed
+
+- Fixed CUDA<->Metal pipeline row permutation under concurrent requests, slot reuse and chunked prefill. Earlier versions could derive activation row order from the scheduler output rather than the persistent input batch, causing request activations to be exchanged between rows. The sending stage now states the actual order of the rows it sends (request ids and row counts, proportional to the number of active requests) with its activation, and the receiving stage computes the permutation into its own order; stages that disagree about the active requests fail with an error instead of guessing. Both stages must run this version: a peer without the row-order protocol is refused. 0.2.0rc1 was affected; with 12 concurrent requests CUDA rank 0 to Metal rank 1, 6 to 8 completions could differ from the single-rank reference (sequential requests and CUDA<->CPU were not affected). CUDA<->CPU pipelines are unchanged.
+
+### Changed
+
+- The Metal pairing depends on the maintained vllm-metal fork at an immutable tag, `tensorsofthewall/vllm-metal@v0.31.0-tbccl1` (commit `fa4f934586bc27ac974a54183237594d1dc28fc5`: upstream vllm-metal 0.31.0, `e7a0c90b`, plus the generic pipeline-transport seam). There is no patch step any more; the patch file in the package is a reference copy (SHA-256 `af950dfc4da283efcbbd7e55dcf28d1ffe6d7d608ded034a6888ea56844b3756`).
+- CPython 3.12 is supported in addition to 3.13 (the vllm-metal 0.31.0 macOS stack is CPython 3.12). The native module is built per Python minor (cp312, cp313).
 
 ## 0.2.0rc1 (release candidate)
 

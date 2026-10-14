@@ -80,11 +80,11 @@ with set_current_vllm_config(VllmConfig()):
         if base_fds is not None:
             print("new fds:", *[x for x in _fd_listing() if x not in base_fds], sep="\n  ", flush=True)
         print(f"rank {rank} cycles={a.cycles} fd_delta={d[0]} py_thread_delta={d[1]} os_thread_delta={d[2]} rss_delta_mb={d[3]:.1f}", flush=True)
-        # vLLM 0.30.0 on macOS leaves 3 descriptors (a kqueue, a handle on "/", /dev/null) per group create/destroy cycle even with libtbccl 0.5.0/0.5.1 and the
-        # same torch-tbccl build that is flat under vLLM 0.31.0; everything else keeps the strict bound.
+        # vLLM on macOS (0.30.0 and 0.31.0, measured on Python 3.12 and 3.13) leaves 3 descriptors (a kqueue, a handle on "/", /dev/null) per group create/destroy
+        # cycle; a control with vLLM's gloo groups and no TBCCL at all leaks far more (45 per cycle). Everything else keeps the strict bound.
         import importlib.metadata as md
 
-        fd_allow = 3 * a.cycles + 2 if sys.platform == "darwin" and md.version("vllm").split("+")[0] == "0.30.0" else 2
+        fd_allow = 3 * a.cycles + 2 if sys.platform == "darwin" and md.version("vllm").split("+")[0] in ("0.30.0", "0.31.0") else 2
         assert d[0] <= fd_allow and d[1] <= 1 and d[2] <= 2 and d[3] < 150, d
         print(f"rank {rank} ok", flush=True)
         raise SystemExit(0)

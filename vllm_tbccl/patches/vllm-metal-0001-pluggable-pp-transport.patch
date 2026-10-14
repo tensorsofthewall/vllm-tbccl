@@ -1,4 +1,4 @@
-From 8a65a06b114915d32897c222b26be69e6204d545 Mon Sep 17 00:00:00 2001
+From fa4f934586bc27ac974a54183237594d1dc28fc5 Mon Sep 17 00:00:00 2001
 From: Sandesh Bharadwaj <34365552+tensorsofthewall@users.noreply.github.com>
 Date: Tue, 6 Oct 2026 16:42:14 +0400
 Subject: [PATCH] Make pipeline-parallel transport pluggable
@@ -9,21 +9,50 @@ selects another transport class by qualname; VLLM_METAL_DIST_BACKEND (default gl
 selects the torch.distributed backend of the worker's control groups. An optional
 begin_step hook tells the transport the packed row layout of each step.
 ---
- tests/test_pipeline_transport.py   | 135 +++++++++++++++++++++++++++++
- vllm_metal/distributed/__init__.py |   4 +
- vllm_metal/distributed/pipeline.py | 107 +++++++++++++++++++++--
- vllm_metal/envs.py                 |  10 +++
- vllm_metal/v1/model_runner.py      |  10 +++
- vllm_metal/v1/worker.py            |  15 +++-
- 6 files changed, 271 insertions(+), 10 deletions(-)
+ docs/configuration.md                  |   2 +
+ tests/test_envs.py                     |   2 +
+ tests/test_pipeline_transport.py       | 139 +++++++++++++++++++++++++
+ tests/test_v1_model_runner_generate.py |   4 +-
+ vllm_metal/distributed/__init__.py     |   4 +
+ vllm_metal/distributed/pipeline.py     | 115 ++++++++++++++++++--
+ vllm_metal/envs.py                     |  14 +++
+ vllm_metal/v1/model_runner.py          |  10 ++
+ vllm_metal/v1/worker.py                |  15 ++-
+ 9 files changed, 293 insertions(+), 12 deletions(-)
  create mode 100644 tests/test_pipeline_transport.py
 
+diff --git a/docs/configuration.md b/docs/configuration.md
+index ab1703a..16b79c7 100644
+--- a/docs/configuration.md
++++ b/docs/configuration.md
+@@ -25,6 +25,8 @@ vllm-metal validates these variables when the engine configuration is created an
+ | `VLLM_METAL_SPEC_INGEST_CHUNK` | `1024` | Maximum number of cold draft-model KV-ingest tokens processed per forward ([issue #482](https://github.com/vllm-project/vllm-metal/issues/482)). Chunking bounds each dispatch stall and the peak logits allocation; a multiple of the KV block size is recommended. Set to `0` to restore single-forward ingest; a non-integer or negative value fails the startup. |
+ | `VLLM_METAL_VISIBLE_DEVICES` | — | Set automatically by the Ray executor per worker (the device-control var); not user-configurable. See [Distributed](distributed.md). |
+ | `VLLM_METAL_RING_BASE_PORT` | `32323` | Base TCP port for the MLX ring data plane under pipeline parallelism, in the user-port range `[1024, 65535]`; stage *r* binds `base + r` (so the default is `32323`/`32324` for two stages). Set the **same** value on every node to move the ring off a busy port — e.g. when an `mlx.launch` job, a restart still in `TIME_WAIT`, or another PP job holds the default. See [Distributed](distributed.md#pipeline-parallelism). |
++| `VLLM_METAL_PP_TRANSPORT_CLS` | — | Python qualified name (`pkg.mod.Class`) of a class implementing `vllm_metal.distributed.PipelineTransport`, used for the activations that cross pipeline-stage boundaries instead of the built-in MLX ring. Unset (default) keeps the MLX ring. The class is constructed as `Class(rank=<stage>, size=<stages>, peer_ips=<list or None>)`; with a custom transport the stages' node IPs are not gathered (the transport owns its discovery). |
++| `VLLM_METAL_DIST_BACKEND` | `gloo` | `torch.distributed` backend for vLLM's own groups on the Metal worker (control plane). Leave at `gloo` unless a pluggable pipeline transport needs another. |
+ 
+ ## MLX Command-Buffer Defaults
+ 
+diff --git a/tests/test_envs.py b/tests/test_envs.py
+index 053559a..cec3576 100644
+--- a/tests/test_envs.py
++++ b/tests/test_envs.py
+@@ -93,6 +93,8 @@ def test_a_bad_value_names_the_variable_and_the_value(
+         ("VLLM_METAL_RING_BASE_PORT", "40000", 40000),
+         ("VLLM_METAL_RING_BASE_PORT", "1024", 1024),
+         ("VLLM_METAL_RING_BASE_PORT", "65535", 65535),
++        ("VLLM_METAL_PP_TRANSPORT_CLS", "pkg.mod.Class", "pkg.mod.Class"),
++        ("VLLM_METAL_DIST_BACKEND", "gloo", "gloo"),
+         ("VLLM_METAL_MM_PREFIX_PATH", "recompute", "recompute"),
+         ("VLLM_METAL_MULTIMODAL_MODE", "text-only", "text-only"),
+         ("VLLM_MLX_DEVICE", "cpu", "cpu"),
 diff --git a/tests/test_pipeline_transport.py b/tests/test_pipeline_transport.py
 new file mode 100644
-index 0000000..7cc104c
+index 0000000..2e880ee
 --- /dev/null
 +++ b/tests/test_pipeline_transport.py
-@@ -0,0 +1,135 @@
+@@ -0,0 +1,139 @@
 +# SPDX-License-Identifier: Apache-2.0
 +"""Pluggable pipeline-parallel transport: default ring unchanged, external transport selected by qualname."""
 +
@@ -140,7 +169,9 @@ index 0000000..7cc104c
 +
 +
 +def test_env_defaults():
-+    assert envs.VLLM_METAL_PP_TRANSPORT_CLS is None or isinstance(envs.VLLM_METAL_PP_TRANSPORT_CLS, str)
++    assert envs.VLLM_METAL_PP_TRANSPORT_CLS is None or isinstance(
++        envs.VLLM_METAL_PP_TRANSPORT_CLS, str
++    )
 +    assert envs.VLLM_METAL_DIST_BACKEND == "gloo"
 +
 +
@@ -158,22 +189,46 @@ index 0000000..7cc104c
 +    assert begin is not None
 +    begin(packed=[("d0", 1), ("p0", 5)], scheduler_output="sched")
 +    assert seen["call"] == ([("d0", 1), ("p0", 5)], "sched")
-+    assert getattr(PipelineGroup(_FakeGroup(2)).transport, "begin_step", None) is None   # ring: no hook
++    assert (
++        getattr(PipelineGroup(_FakeGroup(2)).transport, "begin_step", None) is None
++    )  # ring: no hook
+diff --git a/tests/test_v1_model_runner_generate.py b/tests/test_v1_model_runner_generate.py
+index fa31987..8e53ea1 100644
+--- a/tests/test_v1_model_runner_generate.py
++++ b/tests/test_v1_model_runner_generate.py
+@@ -1884,7 +1884,7 @@ class TestV1MetalModelRunnerGDNSubmit:
+             _paged_block_size=4,
+             num_layers=0,
+         )
+-        runner.pp = SimpleNamespace(size=2, is_last=False)
++        runner.pp = SimpleNamespace(size=2, is_last=False, transport=SimpleNamespace())
+         stage_output = mx.array([[[1.0]]], dtype=mx.float32)
+         send_handle = mx.array([2.0], dtype=mx.float32)
+         runner._pp_model = lambda input_ids, cache: stage_output
+@@ -1936,7 +1936,7 @@ class TestV1MetalModelRunnerGDNSubmit:
+         cache = self.make_gdn_cache()
+         runtime = HybridRuntimeStub(cache)
+         runner = make_stub_runner(_paged_attention_runtime=runtime)
+-        runner.pp = SimpleNamespace(size=2, is_last=False)
++        runner.pp = SimpleNamespace(size=2, is_last=False, transport=SimpleNamespace())
+         runner._execute_model_state = object()
+         runner._request_states["done"] = mr.RequestState(
+             token_ids=[1],
 diff --git a/vllm_metal/distributed/__init__.py b/vllm_metal/distributed/__init__.py
-index 8354d7f..210f2c0 100644
+index 8354d7f..7389c77 100644
 --- a/vllm_metal/distributed/__init__.py
 +++ b/vllm_metal/distributed/__init__.py
-@@ -2,7 +2,9 @@
+@@ -2,14 +2,18 @@
  """Distributed primitives for vLLM Metal (pipeline parallelism)."""
  
  from vllm_metal.distributed.pipeline import (
 +    MlxRingPipelineTransport,
      PipelinedModel,
-+    PipelineTransport,
      PipelineGroup,
++    PipelineTransport,
      apply_pipeline_split,
      is_non_last_stage,
-@@ -10,6 +12,8 @@ from vllm_metal.distributed.pipeline import (
+     pipeline_send,
  )
  
  __all__ = [
@@ -183,7 +238,7 @@ index 8354d7f..210f2c0 100644
      "PipelinedModel",
      "apply_pipeline_split",
 diff --git a/vllm_metal/distributed/pipeline.py b/vllm_metal/distributed/pipeline.py
-index d2600a1..c721c58 100644
+index d2600a1..32d37cf 100644
 --- a/vllm_metal/distributed/pipeline.py
 +++ b/vllm_metal/distributed/pipeline.py
 @@ -22,7 +22,7 @@ import os
@@ -263,15 +318,19 @@ index d2600a1..c721c58 100644
  class PipelineGroup:
      """Thin wrapper over an ``mx.distributed`` group with stage helpers.
  
-@@ -65,13 +126,47 @@ class PipelineGroup:
+@@ -65,13 +126,55 @@ class PipelineGroup:
      is BOTH the first and the last stage (straight-through, no comms).
      """
  
 -    def __init__(self, group: Group) -> None:
-+    def __init__(self, group: Group | None, transport: PipelineTransport | None = None) -> None:
++    def __init__(
++        self, group: Group | None, transport: PipelineTransport | None = None
++    ) -> None:
 +        if transport is None:
 +            if group is None:
-+                raise ValueError("PipelineGroup needs an mx.distributed group or a transport")
++                raise ValueError(
++                    "PipelineGroup needs an mx.distributed group or a transport"
++                )
 +            transport = MlxRingPipelineTransport(group)
          self.group = group
 -        self.rank: int = group.rank()
@@ -298,7 +357,11 @@ index d2600a1..c721c58 100644
 +        transport = _resolve_transport_class(qualname)(
 +            rank=rank, size=size, peer_ips=None if peer_ips is None else list(peer_ips)
 +        )
-+        missing = [n for n in ("send", "recv", "close", "rank", "size") if not hasattr(transport, n)]
++        missing = [
++            n
++            for n in ("send", "recv", "close", "rank", "size")
++            if not hasattr(transport, n)
++        ]
 +        if missing:
 +            raise TypeError(
 +                f"Pipeline transport {qualname!r} does not implement PipelineTransport (missing {missing})"
@@ -314,7 +377,7 @@ index d2600a1..c721c58 100644
      @classmethod
      def bootstrap_ring(cls, rank: int, peer_ips: list[str]) -> PipelineGroup:
          """Form the MLX ring across ``peer_ips`` (one per rank), then init.
-@@ -210,7 +305,7 @@ def pipeline_recv(
+@@ -210,7 +313,7 @@ def pipeline_recv(
      sender's wire array — a mismatch deadlocks (the ring backend does not
      validate across peers).
      """
@@ -323,7 +386,7 @@ index d2600a1..c721c58 100644
      return wire[None]
  
  
-@@ -229,7 +324,7 @@ def pipeline_send(h: mx.array, pp: PipelineGroup) -> mx.array:
+@@ -229,7 +332,7 @@ def pipeline_send(h: mx.array, pp: PipelineGroup) -> mx.array:
              f"pipeline_send expects a (1, n_tokens, hidden) hidden state, "
              f"got shape {tuple(h.shape)}"
          )
@@ -333,7 +396,7 @@ index d2600a1..c721c58 100644
  
  class PipelinedModel:
 diff --git a/vllm_metal/envs.py b/vllm_metal/envs.py
-index 56d6a67..188c779 100644
+index 56d6a67..f29ef48 100644
 --- a/vllm_metal/envs.py
 +++ b/vllm_metal/envs.py
 @@ -129,6 +129,8 @@ if TYPE_CHECKING:
@@ -345,7 +408,7 @@ index 56d6a67..188c779 100644
      VLLM_METAL_KV_COMMIT_PROBE: bool = True
  
  environment_variables: dict[str, Callable[[], Any]] = {
-@@ -241,6 +243,14 @@ environment_variables: dict[str, Callable[[], Any]] = {
+@@ -241,6 +243,18 @@ environment_variables: dict[str, Callable[[], Any]] = {
          maximum=65535,
          note=" (the user-port range)",
      ),
@@ -353,18 +416,22 @@ index 56d6a67..188c779 100644
 +    # class implementing ``vllm_metal.distributed.PipelineTransport``. Unset (default)
 +    # = the built-in MLX ring. The class is constructed as
 +    # ``Class(rank=<stage>, size=<stages>, peer_ips=<list>)``.
-+    "VLLM_METAL_PP_TRANSPORT_CLS": lambda: os.getenv("VLLM_METAL_PP_TRANSPORT_CLS") or None,
++    "VLLM_METAL_PP_TRANSPORT_CLS": lambda: (
++        os.getenv("VLLM_METAL_PP_TRANSPORT_CLS") or None
++    ),
 +    # torch.distributed backend for vLLM's own groups on the Metal worker (control
 +    # plane). Default "gloo", unchanged; a pluggable transport may need another.
-+    "VLLM_METAL_DIST_BACKEND": lambda: os.getenv("VLLM_METAL_DIST_BACKEND", "gloo") or "gloo",
++    "VLLM_METAL_DIST_BACKEND": lambda: (
++        os.getenv("VLLM_METAL_DIST_BACKEND", "gloo") or "gloo"
++    ),
      # Startup commit probe for the lazily allocated KV pool (default on).
      # The pool is not backed until a request writes a block, so a pool the
      # machine cannot hold is otherwise discovered mid-generation, as a swap
 diff --git a/vllm_metal/v1/model_runner.py b/vllm_metal/v1/model_runner.py
-index e13b0eb..5bd7c63 100644
+index cb5a509..48b1fd5 100644
 --- a/vllm_metal/v1/model_runner.py
 +++ b/vllm_metal/v1/model_runner.py
-@@ -1554,6 +1554,16 @@ class MetalModelRunner:
+@@ -1557,6 +1557,16 @@ class MetalModelRunner:
                  # other stage hands its raw hidden state to pipeline_send, whose
                  # lazy op is forced by the async_eval below.
                  assert self._pp_model is not None
@@ -382,17 +449,17 @@ index e13b0eb..5bd7c63 100644
                  if self.pp.is_last:
                      logits = self._extract_logits(stage_output)
 diff --git a/vllm_metal/v1/worker.py b/vllm_metal/v1/worker.py
-index 72590a7..39f83a7 100644
+index 44da492..da57ac6 100644
 --- a/vllm_metal/v1/worker.py
 +++ b/vllm_metal/v1/worker.py
-@@ -39,6 +39,7 @@ from vllm.v1.worker.worker_base import CompilationTimes, WorkerBase
+@@ -37,6 +37,7 @@ from vllm.v1.outputs import (
+ )
+ from vllm.v1.worker.worker_base import CompilationTimes, WorkerBase
  
++import vllm_metal.envs as envs
  from vllm_metal.attention.caches.placement import KV_CACHE_LAYOUT
  from vllm_metal.config import get_config
-+import vllm_metal.envs as envs
  from vllm_metal.distributed import PipelineGroup
- from vllm_metal.platform import MetalPlatform
- from vllm_metal.utils import set_wired_limit
 @@ -65,7 +66,7 @@ def init_worker_distributed_environment(
          rank,
          distributed_init_method,

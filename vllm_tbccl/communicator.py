@@ -20,6 +20,7 @@ from vllm.distributed.parallel_state import TensorMetadata, _split_tensor_dict
 
 from . import diagnostics as diag
 from .peer import peer_kind, publish_kind
+from . import roworder
 from .wire import recv_object, send_object
 
 
@@ -107,6 +108,11 @@ class TBCCLDeviceCommunicator(DeviceCommunicatorBase):
             (k, TensorMetadata(self.peer_device_type, v.dtype, v.size)) if isinstance(v, TensorMetadata) else (k, v)
             for k, v in metadata
         ]
+        if self.peer_device_type == "metal":
+            # A Metal stage orders rows differently from this stage's persistent input batch: state the order of the rows being sent.
+            order = roworder.STATE.local_order()
+            roworder.trace("send_order", order=order)
+            relabeled.append((roworder.ROW_ORDER_KEY, order))
         self._send_object(relabeled, dst)
         for t in tensors:
             if t.numel() == 0:
@@ -116,14 +122,25 @@ class TBCCLDeviceCommunicator(DeviceCommunicatorBase):
     def recv_tensor_dict(self, src):
         metadata = self._recv_object(src)
         out = {}
+        order = None
         for key, value in metadata:
-            if isinstance(value, TensorMetadata):
+            if key == roworder.ROW_ORDER_KEY:
+                order = roworder.normalize(value, "received row order")
+            elif isinstance(value, TensorMetadata):
                 if int(torch.Size(value.size).numel()) == 0:
                     out[key] = torch.empty(value.size, dtype=value.dtype, device=self.device)
                 else:
                     out[key] = self.recv(value.size, value.dtype, src)
             else:
                 out[key] = value
+        if self.peer_device_type == "metal":
+            if order is None:
+                raise roworder.RowOrderError(
+                    "vllm-tbccl: the Metal pipeline peer did not send its row order (a vllm-tbccl without the row-order protocol); "
+                    "both stages must run the same vllm-tbccl version")
+            roworder.STATE.peer_order = order      # consumed by the worker once the runner has updated its input batch
+        elif order is not None:
+            raise roworder.RowOrderError("vllm-tbccl: an upstream pipeline peer sent a Metal row order")
         return out
 
 

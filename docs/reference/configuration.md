@@ -32,6 +32,7 @@ All variables are read from the environment of each vLLM process (set them on **
 |---|---|---|---|---|
 | `VLLM_TBCCL_TRACE` | off | `1` | records per-operation diagnostics in memory | per process |
 | `VLLM_TBCCL_TRACE_FILE` | unset | a file path | the file the diagnostics are dumped to by a background thread (`<path>.<pid>.json`) | per process |
+| `VLLM_TBCCL_TRACE_ROWS` | unset | a file path | qualification diagnostic: one JSON line per CUDA/CPU-to-Metal boundary step recording the local row order, the peer's row order and the permutation applied (`<path>.<pid>`); size is proportional to the number of active requests; never leave it on in production | per process |
 | `VLLM_TBCCL_TRACE_PERIOD_S` | 5 | seconds | dump period | per process |
 | `VLLM_TBCCL_TRACE_STEPS` | off | `1` | times the Metal model runner's forward build and sampling per step (diagnostic only) | per process |
 | `VLLM_TBCCL_CHECKSUM` | off | `1` | computes a byte sum of Metal transfers so sender and receiver can be compared (diagnostic only) | per process |

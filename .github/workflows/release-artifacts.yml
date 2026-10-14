@@ -29,7 +29,6 @@ permissions:
 
 env:
   MANYLINUX_IMAGE: quay.io/pypa/manylinux_2_28_x86_64@sha256:39df0042d5cc900b085aa25a0659368b42a0006c54c474299b785b44c1b4ff82
-  SLIM_IMAGE: python@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c
   TBCCL_REF: ${{ inputs.tbccl_ref || 'main' }}
 
 jobs:
@@ -59,7 +58,7 @@ jobs:
           if-no-files-found: error
 
   linux-wheel:
-    name: Linux wheel (manylinux_2_28, CUDA 13, PyTorch 2.13.0)
+    name: Linux wheels (manylinux_2_28, CUDA 13, PyTorch 2.13.0, CPython 3.12 and 3.13)
     runs-on: ubuntu-24.04
     outputs:
       tbccl_sha: ${{ steps.core_sha.outputs.sha }}
@@ -93,9 +92,19 @@ jobs:
           if-no-files-found: error
 
   linux-clean-install:
-    name: Linux clean install and tests (python 3.13, torch + vLLM, no torch-tbccl, no TBCCL)
+    name: Linux clean install and tests (python ${{ matrix.py }}, torch + vLLM 0.31.0, no torch-tbccl, no TBCCL)
     needs: linux-wheel
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - py: "3.12"
+            tag: cp312
+            image: python@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+          - py: "3.13"
+            tag: cp313
+            image: python@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -106,14 +115,14 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup
           df -h /
-      - name: Install the wheel with vLLM in a bare python:3.13-slim and run the transport tests
+      - name: Install the wheel with vLLM in a bare python:${{ matrix.py }}-slim and run the transport tests
         run: |
-          mkdir wh && cp dl/*.whl wh/
-          docker run --rm -v "$PWD/wh:/wh:ro" -v "$PWD:/repo:ro" "$SLIM_IMAGE" bash -c '
+          mkdir wh && cp dl/*-${{ matrix.tag }}-*.whl wh/ && ls wh
+          docker run --rm -v "$PWD/wh:/wh:ro" -v "$PWD:/repo:ro" "${{ matrix.image }}" bash -c '
             set -e
             apt-get update -qq && apt-get install -y -qq git >/dev/null
             python -m venv /clean && . /clean/bin/activate
-            pip install -q "vllm==0.30.0" pytest numpy
+            pip install -q "vllm==0.31.0" pytest numpy
             pip install -q /wh/*.whl
             pip list | grep -i -E "^(torch|vllm|vllm-tbccl|numpy|torch-tbccl|exo-tbccl) " || true
             # torch-tbccl must be absent: that is the point of the standalone architecture
@@ -126,11 +135,15 @@ jobs:
             python -m vllm_tbccl.info
             python -m vllm_tbccl.patches --list
             python -m vllm_tbccl.patches --path vllm-metal-0001-pluggable-pp-transport.patch
-            cd /r && CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 python -m pytest -q -p no:cacheprovider tests/test_native_backend.py tests/test_independence.py tests/test_patches.py tests/test_plugin_contract.py'
+            cd /r && CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 python -m pytest -q -p no:cacheprovider tests/test_native_backend.py tests/test_independence.py tests/test_patches.py tests/test_plugin_contract.py tests/test_roworder.py tests/test_wire_vllm_parity.py'
 
   macos-wheel:
-    name: macOS arm64 wheel (PyTorch 2.13.0, deployment target 14.0)
+    name: macOS arm64 wheel (CPython ${{ matrix.py }}, PyTorch 2.13.0, deployment target 14.0)
     runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        py: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -142,7 +155,7 @@ jobs:
           path: tbccl
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.13"
+          python-version: "${{ matrix.py }}"
       - name: Build the core archive, then build, inspect and rebuild the wheel
         env:
           MACOSX_DEPLOYMENT_TARGET: "14.0"
@@ -172,10 +185,10 @@ jobs:
           python -c "import importlib.util as u; assert u.find_spec('torch_tbccl') is None; print('torch_tbccl: absent')"
           mkdir /tmp/r && (cd "$GITHUB_WORKSPACE/vllm-tbccl" && tar --exclude=./vllm_tbccl --exclude=./csrc --exclude=./.git -cf - . | tar -xf - -C /tmp/r)
           cd /tmp && python -c "import vllm_tbccl; print('imported from', vllm_tbccl.__file__)" && python -m vllm_tbccl.info && python -m vllm_tbccl.patches --list
-          cd /tmp/r && OMP_NUM_THREADS=2 pytest -q -p no:cacheprovider tests/test_native_backend.py tests/test_independence.py tests/test_patches.py
+          cd /tmp/r && OMP_NUM_THREADS=2 pytest -q -p no:cacheprovider tests/test_native_backend.py tests/test_independence.py tests/test_patches.py tests/test_roworder.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: wheel-macos-arm64
+          name: wheel-macos-arm64-py${{ matrix.py }}
           path: out/
           retention-days: 14
           if-no-files-found: error
@@ -206,11 +219,13 @@ jobs:
           s=$(ls release/*.tar.gz)
           python tools/release_metadata.py sbom "$s" --out "$s.spdx.json" --repo vllm-tbccl --commit "$GITHUB_SHA" --epoch "$EPOCH" --homepage https://vllm-tbccl.tensorsofthewall.com/
           python tools/release_metadata.py check-sbom "$s.spdx.json" "$s"
-          for d in parts/wheel-linux-x86_64 parts/wheel-macos-arm64; do
-            w=$(ls $d/*.whl); cp "$w" release/
+          for d in parts/wheel-*; do
             core=$(ls $d/inputs/tbccl-*.tar.gz)
-            python tools/release_metadata.py sbom "release/$(basename "$w")" --out "release/$(basename "$w").spdx.json" --repo vllm-tbccl --commit "$GITHUB_SHA" --epoch "$EPOCH" --homepage https://vllm-tbccl.tensorsofthewall.com/ --core-archive "$core"
-            python tools/release_metadata.py check-sbom "release/$(basename "$w").spdx.json" "release/$(basename "$w")"
+            for w in $d/*.whl; do
+              cp "$w" release/
+              python tools/release_metadata.py sbom "release/$(basename "$w")" --out "release/$(basename "$w").spdx.json" --repo vllm-tbccl --commit "$GITHUB_SHA" --epoch "$EPOCH" --homepage https://vllm-tbccl.tensorsofthewall.com/ --core-archive "$core"
+              python tools/release_metadata.py check-sbom "release/$(basename "$w").spdx.json" "release/$(basename "$w")"
+            done
           done
           python tools/release_metadata.py sums release
           (cd release && sha256sum -c SHA256SUMS)
