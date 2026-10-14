@@ -32,47 +32,61 @@ The 0.2.0 wheels (`cp312` and `cp313`) and sdist are attached to the GitHub rele
 0.2.0rc1 (superseded) derived the CUDA and Metal row order from the scheduler output and could exchange activations between concurrent requests; use 0.2.0rc2 or later for that pairing (see the [changelog](https://github.com/tensorsofthewall/vllm-tbccl/blob/main/CHANGELOG.md)).
 ```
 
-**Linux CUDA node:**
+Every command names its environment (`.venv/bin/python`), so nothing needs to be activated, and the environment that holds vLLM is also the one that must hold vllm-tbccl. Both go into the same environment on each node. Replace `0.2.0`/`cp312` for another release or interpreter (the CUDA and CPU pairing also has `cp313` wheels).
+
+**Linux CUDA node (both pairings):**
 
 ```sh
-uv venv --python 3.12 .venv && . .venv/bin/activate
-uv pip install vllm==0.31.0 --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
-uv pip install --no-deps ./vllm_tbccl-<version>-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl      # a wheel built from this version (cp313 for Python 3.13)
-python -m vllm_tbccl.info
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python "vllm==0.31.0" --torch-backend cu130
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.0/vllm_tbccl-0.2.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+.venv/bin/python -m vllm_tbccl.info
 ```
 
-**Mac node:** install vLLM 0.31.0 for macOS using Python 3.12; for the Metal pairing install the vllm-metal fork first (below), then:
+`--torch-backend cu130` makes `uv pip` take PyTorch (2.13.0+cu130, the version vLLM 0.31.0 pins) from the CUDA 13 index. It is a preview feature of uv; if your uv rejects it, the equivalent explicit index is `uv pip install --python .venv/bin/python "vllm==0.31.0" --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match`.
+
+**Mac node, CUDA and CPU pairing (no vllm-metal fork):**
 
 ```sh
-uv pip install --no-deps ./vllm_tbccl-<version>-cp312-cp312-macosx_14_0_arm64.whl
-python -m vllm_tbccl.info
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python https://github.com/vllm-project/vllm/releases/download/v0.31.0/vllm-0.31.0%2Bcpu-cp312-cp312-macosx_11_0_arm64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.0/vllm_tbccl-0.2.0-cp312-cp312-macosx_14_0_arm64.whl
+.venv/bin/python -m vllm_tbccl.info
 ```
 
-For the Metal pairing install the vllm-metal fork at the immutable tag (it is vllm-metal 0.31.0 plus the generic transport seam; no patch step):
+The first wheel is the prebuilt macOS CPU build of vLLM 0.31.0 that vllm-metal's installer also uses.
+
+**Mac node, CUDA and Metal pairing:** install the vllm-metal fork at the immutable tag (vllm-metal 0.31.0 plus the generic transport seam, commit `fa4f934586bc27ac974a54183237594d1dc28fc5`; no patch step) with the installer **in that checkout**. It creates a Python 3.12 environment at `vllm-metal/.venv-vllm-metal`, installs the prebuilt vLLM 0.31.0 macOS wheel and the fork editable, and builds the fork's Metal artifacts (this needs Xcode's command-line tools and Metal toolchain). Then add vllm-tbccl to that same environment:
 
 ```sh
 git clone --branch v0.31.0-tbccl1 --depth 1 https://github.com/tensorsofthewall/vllm-metal.git
-cd vllm-metal && ./install.sh && source .venv-vllm-metal/bin/activate
+(cd vllm-metal && ./install.sh)
+uv pip install --python vllm-metal/.venv-vllm-metal/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.0/vllm_tbccl-0.2.0-cp312-cp312-macosx_14_0_arm64.whl
+vllm-metal/.venv-vllm-metal/bin/python -m vllm_tbccl.info
 ```
 
-macOS asks, the first time a new Python interpreter listens on the network, whether to allow incoming connections; allow it, otherwise the Mac node waits silently for the pipeline peer. The fork is pinned by tag, never by branch. The patch shipped in this package is a reference copy of the same change ([patch workflow](../guides/patches.md)).
+```{warning}
+The inherited upstream vllm-metal instructions (the Homebrew formula and the `curl ... | bash` installer from the upstream README) install the **unmodified** upstream vllm-metal, which lacks the transport seam, and `./install.sh --stable`/`--dev` outside a checkout does the same. Run `./install.sh` without arguments from the tagged checkout, as above. The fork is pinned by tag, never by branch. The patch shipped in this package is a reference copy of the same change ([patch workflow](../guides/patches.md)).
+```
+
+macOS asks, the first time a new Python interpreter listens on the network, whether to allow incoming connections; allow it, otherwise the Mac node waits silently for the pipeline peer.
 
 ## Check the installation
 
 ```sh
-python -m vllm_tbccl.info
+.venv/bin/python -m vllm_tbccl.info
 ```
 
-prints the versions of every layer as JSON: the package, torch (running and built-with), the bundled libtbccl, the **C ABI** and **wire protocol**, the devices, and `process_group` (`native` by default). `registered` is `false` in a plain Python process: the `tbccl` backend is registered when the plugin activates inside vLLM. The libtbccl version shown is the package version (`0.6.0`; the release-candidate suffix is not part of that field). Every machine of a job must report the same wire protocol. Then `VLLM_TBCCL_ENABLE=1 vllm --version` logs `Platform plugin tbccl is activated` (vLLM lists the plugin under "Available plugins" in any case; the activation line appears only when `VLLM_TBCCL_ENABLE=1`).
+(on a Metal Mac use `vllm-metal/.venv-vllm-metal/bin/python`) prints the versions of every layer as JSON: the package, torch (running and built-with), the bundled libtbccl, the **C ABI** and **wire protocol**, the devices, and `process_group` (`native` by default). `registered` is `false` in a plain Python process: the `tbccl` backend is registered when the plugin activates inside vLLM. The libtbccl version shown is the package version (`0.6.0`; the release-candidate suffix is not part of that field). Every machine of a job must report the same wire protocol. Then `VLLM_TBCCL_ENABLE=1 .venv/bin/python -c "from vllm.platforms import current_platform; print(type(current_platform).__name__)"` prints `TbcclCudaPlatform` on a CUDA node (verified on a clean install). `vllm --version` does not activate platforms and shows nothing about the plugin; a running `vllm serve` logs `Platform plugin tbccl is activated`.
 
 ## Build from source
 
-Building is needed only without a matching wheel or to change the code. Native module and TBCCL are build-time inputs:
+For developers only: building is needed only without a matching wheel or to change the code, and is not part of installing the wheel. Native module and TBCCL are build-time inputs:
 
 ```sh
-uv venv --python 3.12 .venv && . .venv/bin/activate
-uv pip install vllm==0.31.0 ...            # as above, for your pairing
-TBCCL_ROOT=<installed tbccl prefix> uv pip install --no-build-isolation --no-deps -e .
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python "vllm==0.31.0" --torch-backend cu130            # as above, for your pairing
+TBCCL_ROOT=<installed tbccl prefix> uv pip install --python .venv/bin/python --no-build-isolation --no-deps -e .
 ```
 
 `TBCCL_ROOT` is an installed TBCCL prefix (a [release archive](https://tbccl.tensorsofthewall.com/en/latest/getting-started/install.html) works). A wheel needs no TBCCL install at all.
