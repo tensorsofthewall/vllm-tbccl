@@ -64,7 +64,7 @@ Do **not** use the Homebrew formula or the `curl | bash` installer from the upst
 VLLM_TBCCL_ENABLE=1 .venv/bin/python -c "from vllm.platforms import current_platform; print(type(current_platform).__name__)"
 ```
 
-It prints `TbcclCudaPlatform` on a CUDA node (a Mac in the CPU pairing prints the vllm-tbccl CPU platform class). Without `VLLM_TBCCL_ENABLE=1` the plugin stays inactive and vLLM picks its own platform. On the Metal Mac vllm-metal owns the platform and vllm-tbccl attaches through the fork's transport seam: run the same check with `vllm-metal/.venv-vllm-metal/bin/python` and expect the vllm-metal platform. `vllm --version` does not activate platforms and shows nothing about the plugin. To confirm a running pipeline really uses TBCCL, see [how do I know TBCCL is being used?](docs/guides/verify-active.md).
+It prints `TbcclCudaPlatform` on a CUDA node (a Mac in the CPU pairing prints `TbcclCpuPlatform`; without `VLLM_TBCCL_ENABLE=1` it prints vLLM's own `CpuPlatform`). Without `VLLM_TBCCL_ENABLE=1` the plugin stays inactive and vLLM picks its own platform. On the Metal Mac vllm-metal owns the platform and vllm-tbccl attaches through the fork's transport seam: run the same check with `vllm-metal/.venv-vllm-metal/bin/python` and expect the vllm-metal platform. `vllm --version` does not activate platforms and shows nothing about the plugin. To confirm a running pipeline really uses TBCCL, see [how do I know TBCCL is being used?](docs/guides/verify-active.md).
 
 ## Minimal example: a PP=2 launch
 
