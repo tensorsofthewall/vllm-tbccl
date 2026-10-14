@@ -75,3 +75,33 @@ def test_documented_patches_are_the_shipped_patches():
     page = _read("docs", "guides", "patches.md")
     for name in (p for p in patches if p.endswith(".patch")):
         assert name in page, f"{name} ships in the package but the patch workflow page does not mention it"
+
+
+def test_documented_wheel_urls_name_the_current_release():
+    manifest = json.loads(_read("compatibility.json"))
+    version = manifest["package"]["development_version"]
+    for name in (("README.md",), ("docs", "getting-started", "install.md")):
+        text = _read(*name)
+        urls = re.findall(r"https://github\.com/tensorsofthewall/vllm-tbccl/releases/download/\S+?\.whl", text)
+        assert urls, name
+        for url in urls:
+            assert f"/download/v{version}/vllm_tbccl-{version}-cp312-cp312-" in url, url
+        assert any("manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" in u for u in urls)
+        assert any("macosx_14_0_arm64.whl" in u for u in urls)
+
+
+def test_install_commands_name_the_environment_and_pin_the_fork():
+    manifest = json.loads(_read("compatibility.json"))
+    fork_tag = manifest["frameworks"]["vllm_metal"]["fork_tag"]
+    for name in (("README.md",), ("docs", "getting-started", "install.md")):
+        text = _read(*name)
+        wheel_lines = [ln for ln in text.splitlines() if "uv pip install" in ln and "vllm_tbccl-" in ln and ".whl" in ln]
+        assert wheel_lines
+        for ln in wheel_lines:
+            assert "--no-deps" in ln and "--python " in ln, ln
+        assert "--torch-backend cu130" in text and f"git clone --branch {fork_tag} --depth 1" in text
+        assert "source .venv/bin/activate" not in text and ". .venv/bin/activate" not in text and "source .venv-vllm-metal" not in text
+
+
+def test_readme_is_free_of_source_build_instructions():
+    assert "TBCCL_ROOT" not in _read("README.md") and "pip install -e" not in _read("README.md")
