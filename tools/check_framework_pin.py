@@ -2,27 +2,26 @@
 """Check the vllm-metal fork pin of vllm-tbccl. Stable releases pin an immutable tag of the maintained fork, never a moving branch.
 
     check_framework_pin.py                  offline: the pin is well formed, and the reference patch still matches the recorded provenance (header SHA and file checksum)
-    check_framework_pin.py --online         additionally: the fork tag exists on GitHub and resolves to the recorded SHA; the pin agrees with the TBCCL ecosystem file
+    check_framework_pin.py --online         additionally: the fork tag exists on GitHub and resolves to the recorded SHA (release pin integrity), then the current-ecosystem consistency check
     check_framework_pin.py --patch-diff     additionally: a normalized diff of upstream base -> fork release equals the reference patch (needs git and network)
 
+Two different questions, kept apart: RELEASE PIN INTEGRITY (the immutable tag and SHA recorded here; a mismatch is always an INTEGRITY FAILURE) and CURRENT-ECOSYSTEM
+CONSISTENCY (this repository against tbccl's current ecosystem file; an INTEGRITY FAILURE only for the published stable version, a WARNING for an unreleased candidate).
 A tag that resolves to another commit is an INTEGRITY FAILURE; the script never updates the recorded SHA. The reference patch is provenance (a reconstruction of
 the fork snapshot), not something users apply.
 """
 import argparse
 import hashlib
-import json
 import re
 import subprocess
 import sys
 import tempfile
-import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import maint_common as mc  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-ECOSYSTEM_URL = "https://raw.githubusercontent.com/tensorsofthewall/tbccl/main/release/ecosystem.json"
 UPSTREAM = "vllm-project/vllm-metal"
 
 
@@ -71,7 +70,8 @@ def check_offline(manifest, root, rep):
     return patch
 
 
-def check_online(manifest, rep):
+def check_pin_online(manifest, rep):
+    """RELEASE PIN INTEGRITY: the immutable fork tag still resolves to the recorded SHA. Independent of any release state and of the current ecosystem record."""
     metal = manifest["frameworks"]["vllm_metal"]
     try:
         got = mc.ls_remote_tag(metal["fork"], metal["fork_tag"])
@@ -84,16 +84,7 @@ def check_online(manifest, rep):
             rep.add(mc.INTEGRITY, f"{metal['fork']}@{metal['fork_tag']} resolves to {got}, recorded {metal['fork_revision']}")
         else:
             rep.ok(f"{metal['fork']}@{metal['fork_tag']} resolves to {got}")
-    try:
-        with urllib.request.urlopen(urllib.request.Request(ECOSYSTEM_URL, headers={"User-Agent": "tbccl-maintenance"}), timeout=30) as r:
-            eco = json.load(r)["vllm_tbccl"]
-    except (OSError, ValueError, KeyError) as e:
-        rep.add(mc.WARNING, f"the TBCCL ecosystem file could not be read ({type(e).__name__})")
-        return
-    mine = {"metal_repo": metal["fork"], "metal_tag": metal["fork_tag"], "metal_sha": metal["fork_revision"], "metal_upstream_base": metal["revision"]}
-    for key, value in mine.items():
-        if eco.get(key) != value:
-            rep.add(mc.INTEGRITY, f"{key}: ecosystem file says {eco.get(key)!r}, this repository records {value!r}")
+
 
 
 def check_patch_diff(manifest, patch, rep):
@@ -118,10 +109,25 @@ def check_patch_diff(manifest, patch, rep):
         rep.add(mc.INTEGRITY, "the normalized diff between upstream base and the fork release differs from the reference patch")
 
 
+def check_current_ecosystem(manifest, rep, ecosystem_file=None, ecosystem_ref="main"):
+    """CURRENT-ECOSYSTEM CONSISTENCY: compare with release/ecosystem.json of tbccl (main, or an explicit candidate file or ref). Never a verdict on the pin itself."""
+    metal = manifest["frameworks"]["vllm_metal"]
+    pkg = manifest["package"]
+    try:
+        eco = mc.load_ecosystem(ecosystem_file, ecosystem_ref)
+    except mc.Network as e:
+        rep.add(mc.WARNING, f"the current ecosystem record could not be read ({e}); only the release pin was checked")
+        return
+    mine = {"metal_repo": metal["fork"], "metal_tag": metal["fork_tag"], "metal_sha": metal["fork_revision"], "metal_upstream_base": metal["revision"]}
+    mc.compare_current_ecosystem(rep, eco, "vllm_tbccl", mine, pkg.get("development_version"), pkg.get("released") is True)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--patch-diff", action="store_true")
+    ap.add_argument("--ecosystem-file", help="compare with this candidate ecosystem.json instead of tbccl main")
+    ap.add_argument("--ecosystem-ref", default="main", help="compare with release/ecosystem.json at this tbccl git ref (default main)")
     ap.add_argument("--root", default=str(ROOT))
     args = ap.parse_args()
     root = Path(args.root)
@@ -129,7 +135,8 @@ def main():
     rep = mc.Report("vllm-metal fork pin")
     patch = check_offline(manifest, root, rep)
     if patch and args.online:
-        check_online(manifest, rep)
+        check_pin_online(manifest, rep)
+        check_current_ecosystem(manifest, rep, args.ecosystem_file, args.ecosystem_ref)
     if patch and args.patch_diff:
         check_patch_diff(manifest, patch, rep)
     return rep.finish()
