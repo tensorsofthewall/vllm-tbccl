@@ -46,7 +46,7 @@ export VLLM_USE_V2_MODEL_RUNNER=0          # on both hosts of a mixed pair
 
 ## Supported configurations
 
-The authoritative version table is the ecosystem [compatibility matrix](https://tbccl.tensorsofthewall.com/en/latest/reference/compatibility-matrix.html); [this repository's compatibility page](docs/reference/compatibility.md) adds the vLLM-specific detail, and the [validated configurations](docs/project/validated-configurations.md) page lists what was actually run.
+The authoritative version table is the [current ecosystem status](https://tbccl.tensorsofthewall.com/en/latest/project/ecosystem.html) and the ecosystem [compatibility matrix](https://tbccl.tensorsofthewall.com/en/latest/reference/compatibility-matrix.html); [this repository's compatibility page](docs/reference/compatibility.md) adds the vLLM-specific detail, and the [validated configurations](docs/project/validated-configurations.md) page lists what was actually run.
 
 ## Documentation
 
@@ -58,7 +58,7 @@ Pipeline parallelism with two stages only; one validated model; the Metal pairin
 
 ## Development
 
-`CONTRIBUTING.md` explains the workflow and `AGENTS.md` the rules for the code base; the [development documentation](docs/development/index.md) covers building, testing and where a change belongs. Security: `SECURITY.md`. Changes for users: `CHANGELOG.md`. Releasing: `RELEASE.md`.
+[MAINTENANCE.md](MAINTENANCE.md) records the maintenance policy and what needs physical requalification. `CONTRIBUTING.md` explains the workflow and `AGENTS.md` the rules for the code base; the [development documentation](docs/development/index.md) covers building, testing and where a change belongs. Security: `SECURITY.md`. Changes for users: `CHANGELOG.md`. Releasing: `RELEASE.md`.
 
 ## License
 

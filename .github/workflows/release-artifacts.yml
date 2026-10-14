@@ -10,6 +10,10 @@ on:
         description: "TBCCL core ref (tag or commit) to build against"
         required: false
         default: "main"
+      release_tag:
+        description: "Intended release tag (for example v0.2.0); when set, the workflow refuses to build unless it matches the package version and the release state"
+        required: false
+        default: ""
   pull_request:
     paths:
       - ".github/workflows/release-artifacts.yml"
@@ -32,8 +36,31 @@ env:
   TBCCL_REF: ${{ inputs.tbccl_ref || 'main' }}
 
 jobs:
+  guard:
+    name: release guard (version, manifest, pins, TBCCL line)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: tensorsofthewall/tbccl
+          ref: ${{ env.TBCCL_REF }}
+          path: tbccl-core
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Refuse a wrong-version build
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          ARGS=(); [ -z "$RELEASE_TAG" ] || ARGS+=(--tag "$RELEASE_TAG")
+          python3 tools/check_release_state.py --tbccl-root tbccl-core "${ARGS[@]}"
+      - name: Framework pin
+        run: python3 tools/check_framework_pin.py
+
   sdist:
     name: source distribution
+    needs: guard
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,6 +86,7 @@ jobs:
 
   linux-wheel:
     name: Linux wheels (manylinux_2_28, CUDA 13, PyTorch 2.13.0, CPython 3.12 and 3.13)
+    needs: guard
     runs-on: ubuntu-24.04
     outputs:
       tbccl_sha: ${{ steps.core_sha.outputs.sha }}
@@ -139,6 +167,7 @@ jobs:
 
   macos-wheel:
     name: macOS arm64 wheel (CPython ${{ matrix.py }}, PyTorch 2.13.0, deployment target 14.0)
+    needs: guard
     runs-on: macos-14
     strategy:
       fail-fast: false
