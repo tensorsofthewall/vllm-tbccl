@@ -105,3 +105,13 @@ def test_install_commands_name_the_environment_and_pin_the_fork():
 
 def test_readme_is_free_of_source_build_instructions():
     assert "TBCCL_ROOT" not in _read("README.md") and "pip install -e" not in _read("README.md")
+
+
+def test_quickstart_commands_use_variables_not_one_machines_values():
+    text = _read("docs", "getting-started", "quickstart.md")
+    commands = "\n".join(re.findall(r"```sh\n(.*?)```", text, re.S))
+    assert "192.168.3." not in commands
+    for name in ("LIP", "MIP", "MODEL"):
+        assert re.search(rf"^{name}=", commands, re.M), name
+    assert "--master-addr $LIP" in commands and "--host $LIP" in commands
+    assert commands.count("VLLM_USE_V2_MODEL_RUNNER=0") >= 2
