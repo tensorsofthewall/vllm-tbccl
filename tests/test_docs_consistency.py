@@ -115,3 +115,12 @@ def test_quickstart_commands_use_variables_not_one_machines_values():
         assert re.search(rf"^{name}=", commands, re.M), name
     assert "--master-addr $LIP" in commands and "--host $LIP" in commands
     assert commands.count("VLLM_USE_V2_MODEL_RUNNER=0") >= 2
+
+
+def test_metal_install_uses_the_source_checkout_and_no_expiring_artifact():
+    text = _read("docs", "getting-started", "install.md")
+    assert "no prebuilt public wheel of the fork" in text
+    assert "git clone --branch v0.31.0-tbccl1" in text
+    for doc in ("install.md", "quickstart.md"):
+        body = _read("docs", "getting-started", doc).lower()
+        assert "actions artifact" not in body and "nightly.link" not in body and "workflow run" not in body

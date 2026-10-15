@@ -56,7 +56,7 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 
 The first wheel is the prebuilt macOS CPU build of vLLM 0.31.0 that vllm-metal's installer also uses.
 
-**Mac node, CUDA and Metal pairing:** install the vllm-metal fork at the immutable tag (vllm-metal 0.31.0 plus the generic transport seam, commit `fa4f934586bc27ac974a54183237594d1dc28fc5`; no patch step) with the installer **in that checkout**. It creates a Python 3.12 environment at `vllm-metal/.venv-vllm-metal`, installs the prebuilt vLLM 0.31.0 macOS wheel and the fork editable, and builds the fork's Metal artifacts (this needs Xcode's command-line tools and Metal toolchain). Then add vllm-tbccl to that same environment:
+**Mac node, CUDA and Metal pairing:** install the vllm-metal fork at the immutable tag (vllm-metal 0.31.0 plus the generic transport seam, commit `fa4f934586bc27ac974a54183237594d1dc28fc5`; no patch step) with the installer **in that checkout**. It creates a Python 3.12 environment at `vllm-metal/.venv-vllm-metal`, installs the prebuilt vLLM 0.31.0 macOS wheel and the fork editable, and builds the fork's Metal artifacts (this needs Xcode's command-line tools and Metal toolchain). There is no prebuilt public wheel of the fork: the source checkout below is the supported method, and nothing in these instructions relies on a temporary CI build artifact. Then add vllm-tbccl to that same environment:
 
 ```sh
 git clone --branch v0.31.0-tbccl1 --depth 1 https://github.com/tensorsofthewall/vllm-metal.git
