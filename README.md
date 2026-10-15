@@ -56,6 +56,8 @@ vllm-metal/.venv-vllm-metal/bin/python -m vllm_tbccl.info
 
 Do **not** use the Homebrew formula or the `curl | bash` installer from the upstream vllm-metal README for this pairing: they install the unmodified upstream vllm-metal, which has no transport seam. `--no-deps` keeps the installer from replacing vLLM or PyTorch. Details, source builds (developers only) and troubleshooting: [installing](docs/getting-started/install.md).
 
+**Optional helper.** [`install_adapter.py`](https://tbccl.tensorsofthewall.com/en/latest/getting-started/install-adapters.html) selects and verifies the vllm-tbccl wheel for an environment in which you have already installed vLLM 0.31.0: `python3 install_adapter.py install --adapter vllm --python .venv/bin/python --device cuda` (`cpu` or `mps` on a Mac). It checks the vLLM version and the SHA-256 against the release, installs with `--no-deps`, never installs or changes vLLM, and `--dry-run` prints the manual commands. The commands above keep working without it.
+
 ## Verify the installation
 
 `vllm_tbccl.info` (above) prints the package, torch, bundled libtbccl, C ABI and wire protocol as JSON; every machine of a job must report the same wire protocol, and `registered` is `false` in a plain process because the backend registers when the plugin activates inside vLLM. Then check that vLLM selects the TBCCL platform plugin (Linux CUDA node, and the CPU pairing on the Mac):
@@ -82,6 +84,8 @@ The [quickstart](docs/getting-started/quickstart.md) is a complete, validated tw
 ## Documentation
 
 Hosted documentation: https://vllm-tbccl.tensorsofthewall.com/ (`stable` is the latest final release, numbered versions are earlier releases, and `latest` is development documentation built from `main`). Build it locally with `make docs`. Start with [getting started](docs/getting-started/index.md), the [patch workflow](docs/guides/patches.md), [troubleshooting](docs/guides/troubleshooting.md) and [known limitations](docs/project/limitations.md).
+
+Questions, feedback and what to include in a report: [getting help](https://tbccl.tensorsofthewall.com/en/latest/project/getting-help.html). The projects collect [no telemetry](https://tbccl.tensorsofthewall.com/en/latest/project/privacy.html).
 
 ## Limitations
 
