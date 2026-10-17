@@ -2,6 +2,29 @@
 
 All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. 0.2.0 is the first release; it is experimental.
 
+## 0.2.1
+
+Patch release. It adds the public vLLM benchmark provider and its documentation. There is no change to the vLLM platform plugin, the pipeline communication, the supported vLLM version (0.31.0), the pinned vllm-metal fork revision, PyTorch (2.13.x), the Python versions, the TBCCL C ABI (1) or the wire protocol (4), and nothing in this release is a performance improvement. The wheels are built against TBCCL 0.6.1 (a patch release of 0.6.0 without runtime change); the minimum TBCCL package stays 0.6.0.
+
+### Installation
+
+- The same wheels (`cp312` and `cp313`, Linux x86-64 and macOS arm64) and sdist as 0.2.0, named `vllm_tbccl-0.2.1-...`, attached to the GitHub release with SPDX SBOMs, `SHA256SUMS` and build-provenance attestations.
+- The benchmark provider is **not** in the wheel. It is the `benchmarks/provider` directory of the source of this release (the source archive of the tag `v0.2.1`); the shared runner from the `tbccl` repository runs it with your vLLM environment's interpreter.
+
+### Added
+
+- A benchmark provider (provider protocol 1) for the shared `tbccl` benchmark suite: TTFT, TPOT, inter-token latency and end-to-end latency of streamed requests, throughput at several concurrencies, pipeline-orientation (CUDA first or Metal first) measurements, a single-device reference, strict stream accounting and a correctness gate, with `describe` and `validate` steps.
+- Benchmark documentation: the workloads, how they are timed, the measured reference results with their hardware, software and limits, and a quickstart.
+
+### Compatibility
+
+- vLLM 0.31.0, PyTorch 2.13.x, CPython 3.12 and 3.13, TBCCL 0.6.0 or newer (C ABI 1, wire protocol 4). The vllm-metal fork pin is unchanged.
+
+### Known limitations
+
+- The reference benchmark results were measured on one Linux CUDA / Apple Metal machine pair with Qwen3-0.6B (bf16), PP=2, TP=1, and are labelled with the software they used.
+- The vllm-metal fork is installed from its pinned revision; see the installation guide for what that build needs on a Mac.
+
 ## 0.2.0
 
 First release. Promoted from release candidate 0.2.0rc2 without a runtime change: it carries the CUDA<->Metal row-order fix and the vllm-metal fork dependency of 0.2.0rc2. 0.2.0rc1 must not be used for CUDA and Metal pipelines (see Fixed). The CUDA and CPU pairing was not affected.
