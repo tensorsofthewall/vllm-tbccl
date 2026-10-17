@@ -87,6 +87,10 @@ Hosted documentation: https://vllm-tbccl.tensorsofthewall.com/ (`stable` is the 
 
 Questions, feedback and what to include in a report: [getting help](https://tbccl.tensorsofthewall.com/en/latest/project/getting-help.html). The projects collect [no telemetry](https://tbccl.tensorsofthewall.com/en/latest/project/privacy.html).
 
+## Benchmarks
+
+Run the vLLM pipeline benchmarks (TTFT, TPOT, ITL, throughput, correctness) on your own hardware, standalone or through the TBCCL benchmark runner: [benchmarks](docs/benchmarks/index.md). Reference measurements from one machine pair, with their limits, are in the [results](docs/benchmarks/results.md).
+
 ## Limitations
 
 Pipeline parallelism with two stages only; one validated model; the Metal pairing needs the vllm-metal fork tag `v0.31.0-tbccl1` (vllm-metal 0.31.0 plus the transport seam); a dead worker on the headless node is **not detected by vLLM's leader** (an upstream vLLM limitation, not a TBCCL transport failure). See [known limitations](docs/project/limitations.md).
