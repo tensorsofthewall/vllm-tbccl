@@ -56,7 +56,7 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 
 The first wheel is the prebuilt macOS CPU build of vLLM 0.31.0 that vllm-metal's installer also uses.
 
-**Mac node, CUDA and Metal pairing:** install the vllm-metal fork at the immutable tag (vllm-metal 0.31.0 plus the generic transport seam, commit `fa4f934586bc27ac974a54183237594d1dc28fc5`; no patch step) with the installer **in that checkout**. It creates a Python 3.12 environment at `vllm-metal/.venv-vllm-metal`, installs the prebuilt vLLM 0.31.0 macOS wheel and the fork editable, and builds the fork's Metal artifacts (this needs Xcode's command-line tools and Metal toolchain). There is no prebuilt public wheel of the fork: the source checkout below is the supported method, and nothing in these instructions relies on a temporary CI build artifact. Then add vllm-tbccl to that same environment:
+**Mac node, CUDA and Metal pairing:** install the vllm-metal fork at the immutable tag (vllm-metal 0.31.0 plus the generic transport seam, commit `fa4f934586bc27ac974a54183237594d1dc28fc5`; no patch step) with the installer **in that checkout**. It creates a Python 3.12 environment at `vllm-metal/.venv-vllm-metal`, installs the prebuilt vLLM 0.31.0 macOS wheel and the fork editable, and builds the fork's Metal artifacts (this needs a macOS SDK 26.2 or newer, that is Xcode 26.2 or newer, and its Metal toolchain; the installer downloads the toolchain component with `xcodebuild` if it is missing, and refuses an older SDK before compiling). The fork is installed editable, so the checkout must stay where it is: the compiled paged-attention extension and four `.metallib` files are built into its `vllm_metal/metal/` directory. There is no prebuilt public wheel of the fork: the source checkout below is the supported method, and nothing in these instructions relies on a temporary CI build artifact. Then add vllm-tbccl to that same environment:
 
 ```sh
 git clone --branch v0.31.0-tbccl1 --depth 1 https://github.com/tensorsofthewall/vllm-metal.git
@@ -64,6 +64,17 @@ git clone --branch v0.31.0-tbccl1 --depth 1 https://github.com/tensorsofthewall/
 uv pip install --python vllm-metal/.venv-vllm-metal/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.1/vllm_tbccl-0.2.1-cp312-cp312-macosx_14_0_arm64.whl
 vllm-metal/.venv-vllm-metal/bin/python -m vllm_tbccl.info
 ```
+
+This procedure was exercised from an empty directory on a Mac (macOS 26.5, Xcode SDK 26.5): `./install.sh` built `_paged_ops.cpython-312-darwin.so` and the four metallibs (`paged_attention_v2_kern`, `gdn_kern`, `paged_mla_kern`, `paged_attention_nax_kern`), and the environment held vLLM 0.31.0, vllm-metal 0.31.0, MLX 0.32.1 and PyTorch 2.13.0. To check the build of your own installation, without loading a model:
+
+```sh
+vllm-metal/.venv-vllm-metal/bin/python - <<'PY'
+from vllm_metal.metal import build
+print(build.output_path().exists(), all(build.metallib_path(n).exists() for n in (*build.METALLIB_NAMES, build.NAX_METALLIB_NAME)))
+PY
+```
+
+It prints `True True` when the extension and all four metallibs exist. If an artifact is missing, vllm-metal stops at startup with `Prebuilt native extension not found`; rerun `./install.sh` in the checkout and read its build output.
 
 ```{warning}
 The inherited upstream vllm-metal instructions (the Homebrew formula and the `curl ... | bash` installer from the upstream README) install the **unmodified** upstream vllm-metal, which lacks the transport seam, and `./install.sh --stable`/`--dev` outside a checkout does the same. Run `./install.sh` without arguments from the tagged checkout, as above. The fork is pinned by tag, never by branch. The patch shipped in this package is a reference copy of the same change ([patch workflow](../guides/patches.md)).
