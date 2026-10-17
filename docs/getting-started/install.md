@@ -26,7 +26,7 @@ The Linux wheel is linked against `libtorch_cuda.so` and `libc10_cuda.so`: it ne
 
 ## Install a wheel
 
-The 0.2.0 wheels (`cp312` and `cp313`) and sdist are attached to the GitHub release [`v0.2.0`](https://github.com/tensorsofthewall/vllm-tbccl/releases/tag/v0.2.0). They are not published on PyPI or TestPyPI.
+The 0.2.1 wheels (`cp312` and `cp313`) and sdist are attached to the GitHub release [`v0.2.1`](https://github.com/tensorsofthewall/vllm-tbccl/releases/tag/v0.2.1). They are not published on PyPI or TestPyPI.
 
 ```{warning}
 0.2.0rc1 (superseded) derived the CUDA and Metal row order from the scheduler output and could exchange activations between concurrent requests; use 0.2.0rc2 or later for that pairing (see the [changelog](https://github.com/tensorsofthewall/vllm-tbccl/blob/main/CHANGELOG.md)).
@@ -39,7 +39,7 @@ Every command names its environment (`.venv/bin/python`), so nothing needs to be
 ```sh
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python "vllm==0.31.0" --torch-backend cu130
-uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.0/vllm_tbccl-0.2.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.1/vllm_tbccl-0.2.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 .venv/bin/python -m vllm_tbccl.info
 ```
 
@@ -50,7 +50,7 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 ```sh
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python https://github.com/vllm-project/vllm/releases/download/v0.31.0/vllm-0.31.0%2Bcpu-cp312-cp312-macosx_11_0_arm64.whl
-uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.0/vllm_tbccl-0.2.0-cp312-cp312-macosx_14_0_arm64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.1/vllm_tbccl-0.2.1-cp312-cp312-macosx_14_0_arm64.whl
 .venv/bin/python -m vllm_tbccl.info
 ```
 
@@ -61,7 +61,7 @@ The first wheel is the prebuilt macOS CPU build of vLLM 0.31.0 that vllm-metal's
 ```sh
 git clone --branch v0.31.0-tbccl1 --depth 1 https://github.com/tensorsofthewall/vllm-metal.git
 (cd vllm-metal && ./install.sh)
-uv pip install --python vllm-metal/.venv-vllm-metal/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.0/vllm_tbccl-0.2.0-cp312-cp312-macosx_14_0_arm64.whl
+uv pip install --python vllm-metal/.venv-vllm-metal/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.2.1/vllm_tbccl-0.2.1-cp312-cp312-macosx_14_0_arm64.whl
 vllm-metal/.venv-vllm-metal/bin/python -m vllm_tbccl.info
 ```
 
