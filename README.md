@@ -26,7 +26,7 @@ Two-stage pipeline parallelism (`PP=2`, `TP=1`, two-rank groups) in two pairings
 | **A. CUDA + CPU** | vLLM 0.31.0, CUDA 13 PyTorch | vLLM 0.31.0 (CPU build for macOS) | no |
 | **B. CUDA + Metal** | vLLM 0.31.0, CUDA 13 PyTorch | [`tensorsofthewall/vllm-metal`](https://github.com/tensorsofthewall/vllm-metal) at tag `v0.31.0-tbccl1` (vllm-metal 0.31.0 plus a generic transport seam) | **yes** |
 
-Validated model: Qwen3-0.6B, over Thunderbolt 4. The stack is Python 3.12 (the primary validated interpreter on both hosts; 3.13 wheels exist for the CUDA and CPU pairing), PyTorch 2.13.x and TBCCL C ABI 1 / wire protocol 4. Other versions warn once at plugin activation and nothing is claimed for them. Tensor parallelism above 1 and other models are not validated ([known limitations](docs/project/limitations.md)). The authoritative version table is the [current ecosystem status](https://tbccl.tensorsofthewall.com/en/latest/project/ecosystem.html) (a living page) with the ecosystem [compatibility matrix](https://tbccl.tensorsofthewall.com/en/latest/reference/compatibility-matrix.html); this repository's [compatibility page](docs/reference/compatibility.md) and [validated configurations](docs/project/validated-configurations.md) record what was run for this release.
+**Which pairing?** Choose A for the simplest Mac install (no fork); choose B when the Mac stage should run on the Apple GPU through vllm-metal. Validated model: Qwen3-0.6B, over Thunderbolt 4. The stack is Python 3.12 (the primary validated interpreter on both hosts; 3.13 wheels exist for the CUDA and CPU pairing), PyTorch 2.13.x and TBCCL C ABI 1 / wire protocol 4. Other versions warn once at plugin activation and nothing is claimed for them. Tensor parallelism above 1 and other models are not validated ([known limitations](docs/project/limitations.md)). The authoritative version table is the [current ecosystem status](https://tbccl.tensorsofthewall.com/en/latest/project/ecosystem.html) (a living page) with the ecosystem [compatibility matrix](https://tbccl.tensorsofthewall.com/en/latest/reference/compatibility-matrix.html); this repository's [compatibility page](docs/reference/compatibility.md) and [validated configurations](docs/project/validated-configurations.md) record what was run for this release.
 
 ## Installation
 
@@ -102,7 +102,7 @@ Pipeline parallelism with two stages only; one validated model; the Metal pairin
 
 ## Development
 
-[MAINTENANCE.md](MAINTENANCE.md) records the maintenance policy and what needs physical requalification. `CONTRIBUTING.md` explains the workflow and `AGENTS.md` the rules for the code base; the [development documentation](docs/development/index.md) covers building, testing and where a change belongs. Security: `SECURITY.md`. Changes for users: `CHANGELOG.md`. Releasing: `RELEASE.md`.
+[MAINTENANCE.md](MAINTENANCE.md) records the maintenance policy and what needs physical requalification. `CONTRIBUTING.md` explains the workflow and `AGENTS.md` the rules for the code base; the [development documentation](docs/development/index.md) covers building, testing and where a change belongs. The [code map](docs/development/code-map.md) points to the first files for each topic, and [testing](docs/development/testing.md) says which checks need a GPU, a Mac or a Thunderbolt link (most do not). Security: `SECURITY.md`. Changes for users: `CHANGELOG.md`. Releasing: `RELEASE.md`.
 
 ## License
 
