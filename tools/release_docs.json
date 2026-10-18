@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "repo": "tensorsofthewall/vllm-tbccl",
+  "scan": [
+    "README.md",
+    "MAINTENANCE.md",
+    "RELEASE.md",
+    "docs/**/*.md"
+  ],
+  "exclude": [
+    "docs/validation/*",
+    "docs/adr/*",
+    "docs/project/changelog.md",
+    "docs/benchmarks/results.md"
+  ],
+  "exclude_reason": "Validation reports, decision records, the changelog page and the benchmark results page record what was true or measured for an earlier version and must keep those versions. They are not scanned for release URLs or artifact names.",
+  "versions": {
+    "bundled_tbccl": "0.6.1"
+  },
+  "statements": [
+    {
+      "file": "README.md",
+      "find": "^> \\*\\*Status:\\*\\* \\*\\*(?P<v>\\d+\\.\\d+\\.\\d+(?:rc\\d+)?)\\*\\*",
+      "expect": "current",
+      "describe": "README status line"
+    },
+    {
+      "file": "docs/index.md",
+      "find": "The current release is (?P<v>\\d+\\.\\d+\\.\\d+(?:rc\\d+)?)",
+      "expect": "current",
+      "describe": "documentation homepage release statement"
+    },
+    {
+      "file": "docs/getting-started/install.md",
+      "find": "The (?P<v>\\d+\\.\\d+\\.\\d+(?:rc\\d+)?) wheels \\(",
+      "expect": "current",
+      "describe": "installation page release statement"
+    },
+    {
+      "file": "docs/getting-started/install.md",
+      "find": "Replace `(?P<v>\\d+\\.\\d+\\.\\d+(?:rc\\d+)?)`/`cp312`",
+      "expect": "current",
+      "describe": "installation page 'replace this version' hint"
+    },
+    {
+      "file": "docs/getting-started/install.md",
+      "find": "the package version of the TBCCL that the wheel bundles \\(`(?P<v>\\d+\\.\\d+\\.\\d+(?:rc\\d+)?)`",
+      "expect": "version:bundled_tbccl",
+      "describe": "installation page bundled libtbccl version"
+    },
+    {
+      "file": "docs/reference/compatibility.md",
+      "find": "^\\| Package version \\| (?P<v>\\d+\\.\\d+\\.\\d+(?:rc\\d+)?) \\|",
+      "expect": "current",
+      "describe": "compatibility page package version"
+    },
+    {
+      "file": "MAINTENANCE.md",
+      "find": "^vllm-tbccl (?P<v>\\d+\\.\\d+\\.\\d+(?:rc\\d+)?):",
+      "expect": "current",
+      "describe": "MAINTENANCE supported release"
+    },
+    {
+      "file": "MAINTENANCE.md",
+      "find": "TBCCL (?P<v>\\d+\\.\\d+\\.\\d+(?:rc\\d+)?) bundled",
+      "expect": "version:bundled_tbccl",
+      "describe": "MAINTENANCE bundled TBCCL"
+    }
+  ],
+  "allow": []
+}
