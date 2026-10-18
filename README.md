@@ -79,8 +79,8 @@ On each node set, in the launching process:
 
 ```sh
 export VLLM_TBCCL_ENABLE=1                 # vLLM loads the "tbccl" platform plugin
-export TBCCL_LOCAL_ENDPOINT=<this host's link address>:0
-export VLLM_HOST_IP=<this host's link address>
+export TBCCL_LOCAL_ENDPOINT=<this-host-link-address>:0
+export VLLM_HOST_IP=<this-host-link-address>
 export VLLM_USE_V2_MODEL_RUNNER=0          # on both hosts of a mixed pair
 ```
 

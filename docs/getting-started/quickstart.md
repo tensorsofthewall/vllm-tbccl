@@ -18,6 +18,23 @@ This is a complete launch of one vLLM pipeline across two machines: a **Linux CU
 | TBCCL backend | `VLLM_TBCCL_BACKEND` unset (CUDA platform) | `VLLM_TBCCL_BACKEND=metal` (vllm-metal owns the platform) |
 | pipeline stage | first layers | later layers (the layer split is automatic) |
 
+### Settings that must agree, and those that must differ
+
+```{table}
+:class: tb-stack tb-stack-settings
+
+| Setting | Linux CUDA node | Mac Metal node | Rule |
+|---|---|---|---|
+| Python environment | `.venv` (vLLM and vllm-tbccl) | `vllm-metal/.venv-vllm-metal` (vLLM, the fork and vllm-tbccl) | each node its own; the same vllm-tbccl version |
+| `VLLM_USE_V2_MODEL_RUNNER` | `0` | `0` | **must be equal** on both |
+| `VLLM_TBCCL_ENABLE` | `1` | `1` | set in the process that starts vLLM, on each node |
+| `VLLM_TBCCL_BACKEND` | unset | `metal` | per node |
+| `VLLM_HOST_IP`, `TBCCL_LOCAL_ENDPOINT` | `$LIP`, `$LIP:0` | `$MIP`, `$MIP:0` | each node's **own** link address; the endpoint port must be `0` |
+| `--master-addr`, `--master-port` | `$LIP`, `29600` | `$LIP`, `29600` | **must be equal**: node 0's link address |
+| `--node-rank`, `--headless` | `0`, no | `1`, yes | differ |
+| model arguments (`$COMMON`) and the model | the same | the same | **must be equal**; the model must exist locally on both |
+```
+
 ## 1. Common settings
 
 Set these on **both** machines, in each terminal that starts a node. The two link addresses and the model path are the only values to change; `MODEL` is a directory that already exists on that machine (nothing is downloaded):
@@ -69,6 +86,13 @@ curl http://$LIP:8170/v1/completions -H 'Content-Type: application/json' \
 ## 5. Confirm TBCCL is carrying it
 
 The Linux log contains `Platform plugin tbccl is activated` (the Metal Mac's log says `Platform plugin metal is activated`, which is correct there) and `world_size=2 rank=0 ... backend=tbccl`; see [how do I know TBCCL is being used?](../guides/verify-active.md).
+
+## What success looks like
+
+- Both logs show `world_size=2` with `rank=0` on the Linux node and `rank=1` on the Mac and `backend=tbccl`, the Linux log shows `Platform plugin tbccl is activated`, and the API logs that it is ready.
+- The `curl` request returns a completion, and `examples/pp_client.py` reports the reference prompts as token-identical.
+
+**What this showed:** a two-stage pipeline (the first layers on one machine, the rest on the other) generated text, with activations crossing the link through TBCCL. **What it did not show:** that it is faster than one machine (for a model that fits on one device it is not; see [results](../benchmarks/results.md)), models other than the validated one, or recovery after a node dies. **Read next:** [how do I know TBCCL is being used?](../guides/verify-active.md), [pipeline parallelism](../guides/pipeline-parallelism.md), [validated configurations](../project/validated-configurations.md). **If it fails:** [troubleshooting](../guides/troubleshooting.md), starting at "Start here".
 
 ## 6. Stop
 

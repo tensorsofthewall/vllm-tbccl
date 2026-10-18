@@ -9,13 +9,14 @@ This repository, **vllm-tbccl**, is the vLLM adapter. It owns the plugin, the bu
 | the Metal transport, boundary codecs and receive-buffer pool | in-place patches of vLLM |
 | the patch files shipped as package data | scheduler, executor or worker-death handling (upstream vLLM) |
 
-Start with [contributing](contributing.md) and [where should this change go?](where-should-this-change-go.md). The rules for the code base are in `AGENTS.md`.
+Start with [contributing](contributing.md) and [where should this change go?](where-should-this-change-go.md) and the [code map](code-map.md). The rules for the code base are in `AGENTS.md`.
 
 ```{toctree}
 :maxdepth: 1
 
 contributing
 where-should-this-change-go
+code-map
 testing
 building-docs
 release-process

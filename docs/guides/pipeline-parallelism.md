@@ -35,3 +35,7 @@ Tensors of model data go through `ProcessGroupTBCCL`; per-operation tracing is a
 
 - Two-rank groups; `PP=2`, `TP=1`. `reduce_scatter` and `gather` raise `NotImplementedError`; tensor parallelism above 1 was not exercised.
 - Validated with Qwen3-0.6B; other models and larger sizes have not been validated.
+
+## Where the transport comes from
+
+The pipeline's activations cross the link through TBCCL's TCP transport; see TBCCL's [transports](https://tbccl.tensorsofthewall.com/en/latest/concepts/transports.html) and [heterogeneous communication](https://tbccl.tensorsofthewall.com/en/latest/concepts/heterogeneous-communication.html) pages. For Thunderbolt problems use the [link troubleshooting guide](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html).
