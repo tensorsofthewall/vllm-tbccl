@@ -1,4 +1,9 @@
-# vllm-tbccl
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="branding/lockups/vllm-tbccl-horizontal-dark.svg">
+    <img src="branding/lockups/vllm-tbccl-horizontal-light.svg" alt="vllm-tbccl" height="72">
+  </picture>
+</h1>
 
 [![docs](https://github.com/tensorsofthewall/vllm-tbccl/actions/workflows/docs.yml/badge.svg)](https://github.com/tensorsofthewall/vllm-tbccl/actions/workflows/docs.yml) [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE) [![release](https://img.shields.io/github/v/release/tensorsofthewall/vllm-tbccl?label=release)](https://github.com/tensorsofthewall/vllm-tbccl/releases)
 
@@ -102,3 +107,7 @@ Pipeline parallelism with two stages only; one validated model; the Metal pairin
 ## License
 
 vllm-tbccl is licensed under the Apache License, Version 2.0 (see `LICENSE`). Copyright 2026 Sandesh Bharadwaj.
+
+## Independence
+
+vllm-tbccl is an independent project. It is not affiliated with, sponsored by or endorsed by the vLLM project or the PyTorch Foundation. vLLM, PyTorch, CUDA, Metal and other product and company names mentioned here are trademarks of their respective owners. See [Branding and independence](docs/project/branding.md).
