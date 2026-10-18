@@ -13,20 +13,55 @@
       "statistic": "the median over 5 independent lifecycles of each lifecycle's median request (TPOT) or of its closed-loop output tokens per second (throughput)",
       "kind": "bars",
       "series": [
-        {"id": "cuda", "style": "hatch-accent"},
-        {"id": "metal", "style": "solid"}
+        {
+          "id": "cuda",
+          "style": "hatch-accent"
+        },
+        {
+          "id": "metal",
+          "style": "solid"
+        }
       ],
       "panels": [
         {
           "title": "Time per output token (TPOT), concurrency 1",
           "unit": "milliseconds per output token",
           "direction": "lower is better",
-          "note": ["Cause not isolated: stage order, API host and sampler location are confounded"],
+          "note": [
+            "Cause not isolated: stage order, API host and sampler location are confounded"
+          ],
           "groups": [
-            {"label": "", "bars": [
-              {"label": "CUDA-first, 5 lifecycles", "series": "cuda", "value": 21.19, "published": "21.19 ms", "exact": true, "n": 5},
-              {"label": "Metal-first, 5 lifecycles", "series": "metal", "value": 15.83, "published": "15.83 ms", "exact": true, "n": 5}
-            ]}
+            {
+              "label": "",
+              "bars": [
+                {
+                  "label": "CUDA-first, 5 lifecycles",
+                  "series": "cuda",
+                  "value": 21.19,
+                  "published": "21.19 ms",
+                  "exact": true,
+                  "n": 5,
+                  "table": {
+                    "section": "Stage order, concurrency 1 and 12",
+                    "row": "TPOT, concurrency 1",
+                    "column": "CUDA-first"
+                  }
+                },
+                {
+                  "label": "Metal-first, 5 lifecycles",
+                  "series": "metal",
+                  "value": 15.83,
+                  "published": "15.83 ms",
+                  "exact": true,
+                  "n": 5,
+                  "table": {
+                    "section": "Stage order, concurrency 1 and 12",
+                    "row": "TPOT, concurrency 1",
+                    "column": "Metal-first"
+                  }
+                }
+              ]
+            }
           ]
         },
         {
@@ -34,10 +69,37 @@
           "unit": "output tokens per second",
           "direction": "higher is better",
           "groups": [
-            {"label": "", "bars": [
-              {"label": "CUDA-first, 5 lifecycles", "series": "cuda", "value": 344.1, "published": "344.1", "exact": true, "n": 5},
-              {"label": "Metal-first, 5 lifecycles", "series": "metal", "value": 450.4, "published": "450.4", "exact": true, "n": 5}
-            ]}
+            {
+              "label": "",
+              "bars": [
+                {
+                  "label": "CUDA-first, 5 lifecycles",
+                  "series": "cuda",
+                  "value": 344.1,
+                  "published": "344.1",
+                  "exact": true,
+                  "n": 5,
+                  "table": {
+                    "section": "Stage order, concurrency 1 and 12",
+                    "row": "Output tokens per second, concurrency 12",
+                    "column": "CUDA-first"
+                  }
+                },
+                {
+                  "label": "Metal-first, 5 lifecycles",
+                  "series": "metal",
+                  "value": 450.4,
+                  "published": "450.4",
+                  "exact": true,
+                  "n": 5,
+                  "table": {
+                    "section": "Stage order, concurrency 1 and 12",
+                    "row": "Output tokens per second, concurrency 12",
+                    "column": "Metal-first"
+                  }
+                }
+              ]
+            }
           ]
         }
       ]
@@ -46,7 +108,7 @@
       "id": "concurrency-scaling",
       "title": "Output throughput against concurrency, by stage order",
       "summary": "Line chart with measured points only at concurrency 1, 4 and 12. CUDA-first: 44.5, 156.2 and 341.3 output tokens per second. Metal-first: 58.8, 200.9 and 451.5. Throughput rose almost linearly over the measured range, and nothing saturated inside the validated limit of 12 concurrent requests. The lines are drawn only between measured points and are not extrapolated beyond 12.",
-      "conditions": "Closed loop, Qwen3-0.6B, bf16, PP=2, TP=1, prompt 128 tokens, 32 generated tokens, vLLM 0.31.0 with vllm-tbccl 0.2.0. Only concurrency 1, 4 and 12 were measured; nothing is shown or implied beyond 12.",
+      "conditions": "Closed loop, Qwen3-0.6B, bf16, PP=2, TP=1, prompt 128 tokens, 32 generated tokens, vLLM 0.31.0 with vllm-tbccl 0.2.0. Only concurrency 1, 4 and 12 were measured; nothing is shown or implied beyond 12. The concurrency-12 points aggregate all passes, so they differ slightly from the lifecycle medians in the stage-order chart (344.1 and 450.4); see the table above.",
       "page": "results.md",
       "section": "Throughput scaling",
       "statistic": "the median over all passes of five lifecycles per orientation",
@@ -55,19 +117,111 @@
       "y_label": "Output throughput",
       "y_unit": "output tokens per second",
       "y_scale": "linear",
-      "x_ticks": [{"x": 1, "label": "1"}, {"x": 4, "label": "4"}, {"x": 12, "label": "12"}],
+      "x_ticks": [
+        {
+          "x": 1,
+          "label": "1"
+        },
+        {
+          "x": 4,
+          "label": "4"
+        },
+        {
+          "x": 12,
+          "label": "12"
+        }
+      ],
       "series": [
-        {"label": "Metal-first", "marker": "circle", "dash": "solid", "color": "accent", "points": [
-          {"x": 1, "value": 58.8, "published": "58.8", "exact": true, "n": 5},
-          {"x": 4, "value": 200.9, "published": "200.9", "exact": true, "n": 5},
-          {"x": 12, "value": 451.5, "published": "451.5", "exact": true, "n": 5}
-        ]},
-        {"label": "CUDA-first", "marker": "square", "dash": "dashed", "color": "neutral", "points": [
-          {"x": 1, "value": 44.5, "published": "44.5", "exact": true, "n": 5},
-          {"x": 4, "value": 156.2, "published": "156.2", "exact": true, "n": 5},
-          {"x": 12, "value": 341.3, "published": "341.3", "exact": true, "n": 5}
-        ]}
-      ]
+        {
+          "label": "Metal-first",
+          "marker": "circle",
+          "dash": "solid",
+          "color": "accent",
+          "points": [
+            {
+              "x": 1,
+              "value": 58.8,
+              "published": "58.8",
+              "exact": true,
+              "n": 5,
+              "table": {
+                "section": "Throughput scaling",
+                "row": "1",
+                "column": "Metal-first"
+              }
+            },
+            {
+              "x": 4,
+              "value": 200.9,
+              "published": "200.9",
+              "exact": true,
+              "n": 5,
+              "table": {
+                "section": "Throughput scaling",
+                "row": "4",
+                "column": "Metal-first"
+              }
+            },
+            {
+              "x": 12,
+              "value": 451.5,
+              "published": "451.5",
+              "exact": true,
+              "n": 5,
+              "table": {
+                "section": "Throughput scaling",
+                "row": "12",
+                "column": "Metal-first"
+              }
+            }
+          ]
+        },
+        {
+          "label": "CUDA-first",
+          "marker": "square",
+          "dash": "dashed",
+          "color": "neutral",
+          "points": [
+            {
+              "x": 1,
+              "value": 44.5,
+              "published": "44.5",
+              "exact": true,
+              "n": 5,
+              "table": {
+                "section": "Throughput scaling",
+                "row": "1",
+                "column": "CUDA-first"
+              }
+            },
+            {
+              "x": 4,
+              "value": 156.2,
+              "published": "156.2",
+              "exact": true,
+              "n": 5,
+              "table": {
+                "section": "Throughput scaling",
+                "row": "4",
+                "column": "CUDA-first"
+              }
+            },
+            {
+              "x": 12,
+              "value": 341.3,
+              "published": "341.3",
+              "exact": true,
+              "n": 5,
+              "table": {
+                "section": "Throughput scaling",
+                "row": "12",
+                "column": "CUDA-first"
+              }
+            }
+          ]
+        }
+      ],
+      "x_scale": "linear"
     },
     {
       "id": "single-device-vs-pipeline",
@@ -75,28 +229,105 @@
       "summary": "Horizontal bars, lower is better. One device: Linux CUDA GPU 7.97 ms, Mac Metal 14.48 ms, Mac CPU 23.48 ms. Two-device pipeline: CUDA-first 21.19 ms and Metal-first 15.83 ms. The model, Qwen3-0.6B, fits on a single device, and the best pipeline result (15.83 ms) was slower than the CUDA GPU alone (7.97 ms). Pipeline parallelism exists for models that do not fit one machine; it does not make a model that fits faster.",
       "conditions": "Qwen3-0.6B, bf16, concurrency 1, vLLM 0.31.0. The single-device runs and the pipeline run in different execution environments and placements (the Mac CPU stage and the Metal stage use different software environments), so treat the comparison as context rather than as an isolated measurement of distribution.",
       "page": "results.md",
-      "section": ["Single-device references", "Stage order, concurrency 1 and 12"],
+      "section": [
+        "Single-device references",
+        "Stage order, concurrency 1 and 12"
+      ],
       "statistic": "TPOT as published; the pipeline rows are medians over 5 lifecycles, and the page does not state a repetition count for the single-device rows",
       "kind": "bars",
       "series": [
-        {"id": "single", "style": "hatch"},
-        {"id": "pipeline", "style": "solid"}
+        {
+          "id": "single",
+          "style": "hatch"
+        },
+        {
+          "id": "pipeline",
+          "style": "solid"
+        }
       ],
       "panels": [
         {
           "unit": "milliseconds per output token",
           "direction": "lower is better",
-          "note": ["Slower than one CUDA GPU: this model fits on a single device"],
+          "note": [
+            "Slower than one CUDA GPU: this model fits on a single device"
+          ],
           "groups": [
-            {"label": "Single device", "bars": [
-              {"label": "Linux CUDA GPU", "series": "single", "value": 7.97, "published": "7.97 ms", "exact": true, "n": "not stated on the page"},
-              {"label": "Mac (Metal)", "series": "single", "value": 14.48, "published": "14.48 ms", "exact": true, "n": "not stated on the page"},
-              {"label": "Mac CPU", "series": "single", "value": 23.48, "published": "23.48 ms", "exact": true, "n": "not stated on the page"}
-            ]},
-            {"label": "Two-device pipeline (PP=2)", "bars": [
-              {"label": "CUDA-first", "series": "pipeline", "value": 21.19, "published": "21.19 ms", "exact": true, "n": 5},
-              {"label": "Metal-first", "series": "pipeline", "value": 15.83, "published": "15.83 ms", "exact": true, "n": 5}
-            ]}
+            {
+              "label": "Single device",
+              "bars": [
+                {
+                  "label": "Linux CUDA GPU",
+                  "series": "single",
+                  "value": 7.97,
+                  "published": "7.97 ms",
+                  "exact": true,
+                  "n": "not stated on the page",
+                  "table": {
+                    "section": "Single-device references",
+                    "row": "Linux CUDA GPU",
+                    "column": "TPOT"
+                  }
+                },
+                {
+                  "label": "Mac (Metal)",
+                  "series": "single",
+                  "value": 14.48,
+                  "published": "14.48 ms",
+                  "exact": true,
+                  "n": "not stated on the page",
+                  "table": {
+                    "section": "Single-device references",
+                    "row": "Mac (Metal)",
+                    "column": "TPOT"
+                  }
+                },
+                {
+                  "label": "Mac CPU",
+                  "series": "single",
+                  "value": 23.48,
+                  "published": "23.48 ms",
+                  "exact": true,
+                  "n": "not stated on the page",
+                  "table": {
+                    "section": "Single-device references",
+                    "row": "Mac CPU",
+                    "column": "TPOT"
+                  }
+                }
+              ]
+            },
+            {
+              "label": "Two-device pipeline (PP=2)",
+              "bars": [
+                {
+                  "label": "CUDA-first",
+                  "series": "pipeline",
+                  "value": 21.19,
+                  "published": "21.19 ms",
+                  "exact": true,
+                  "n": 5,
+                  "table": {
+                    "section": "Stage order, concurrency 1 and 12",
+                    "row": "TPOT, concurrency 1",
+                    "column": "CUDA-first"
+                  }
+                },
+                {
+                  "label": "Metal-first",
+                  "series": "pipeline",
+                  "value": 15.83,
+                  "published": "15.83 ms",
+                  "exact": true,
+                  "n": 5,
+                  "table": {
+                    "section": "Stage order, concurrency 1 and 12",
+                    "row": "TPOT, concurrency 1",
+                    "column": "Metal-first"
+                  }
+                }
+              ]
+            }
           ]
         }
       ]

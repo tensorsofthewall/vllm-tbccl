@@ -54,7 +54,14 @@ Output tokens per second, closed loop, median over all passes of five lifecycles
 | 4 | 156.2 | 200.9 |
 | 12 | 341.3 | 451.5 |
 
-TPOT stayed nearly flat as concurrency rose to 12, so throughput scaled almost linearly; nothing saturated inside the validated limit of 12 concurrent requests. (The concurrency-12 figures differ slightly from the table above because they aggregate all passes instead of lifecycle medians.)
+TPOT stayed nearly flat as concurrency rose to 12, so throughput scaled almost linearly; nothing saturated inside the validated limit of 12 concurrent requests. Two sets of concurrency-12 figures appear on this page. They come from the same five lifecycles per orientation and differ only in how they are aggregated, so neither is a correction of the other:
+
+| Where | Aggregation | CUDA-first | Metal-first |
+|---|---|---|---|
+| [Stage order table](#stage-order-concurrency-1-and-12) and its chart | median over the five lifecycles of each lifecycle's closed-loop output tokens per second | 344.1 | 450.4 |
+| This table and the scaling chart below | median over all passes of the five lifecycles | 341.3 | 451.5 |
+
+Use the first when comparing lifecycles (it is the unit of replication, and the exact test uses it). Use the second to read the shape of the scaling curve, because this page publishes it for concurrency 1 and 4 as well. The measurements are unchanged; only the aggregation differs.
 
 ```{raw} html
 :file: charts/concurrency-scaling.html
