@@ -16,7 +16,7 @@ TBCCL_ROOT=<installed tbccl prefix> uv pip install --python .venv/bin/python --n
 
 Do not use `uv pip install --reinstall`, which rewrites torch. `VLLM_TBCCL_ENABLE=1` enables the plugin in a process.
 
-Run `tests/` for any change. Metal tests skip on Linux. End-to-end and multi-host scripts need a local model (never download weights) and are opt-in; peer-failure tests are loopback only. Say in the pull request what you ran.
+Run `tests/` for any change. Metal tests skip on Linux. End-to-end and multi-host scripts need a local model (never download weights) and are opt-in; peer-failure tests are loopback only. Say in the pull request what you ran. `docs/development/testing.md` ("What needs what") lists which checks need which hardware, and `docs/development/code-map.md` points to the first files for each topic.
 
 ## Contribution workflow
 
