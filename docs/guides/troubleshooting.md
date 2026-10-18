@@ -2,6 +2,49 @@
 
 Find the symptom, check the likely cause with the diagnostic, apply the fix. Start with `python -m vllm_tbccl.info` on every node ([how do I know TBCCL is being used?](verify-active.md)). Each row says whether the cause is in TBCCL, vllm-tbccl or upstream vLLM.
 
+## Start here
+
+### Work through it in this order
+
+Each step is read-only. Stop at the first step that fails: later steps depend on it.
+
+| Step | Question | Check | If it fails |
+|---|---|---|---|
+| 1 | Which versions are installed? | `.venv/bin/python -m vllm_tbccl.info` on **every** node (same wire protocol; on the Metal Mac use `vllm-metal/.venv-vllm-metal/bin/python`) | [Installing and starting](#installing-and-starting) |
+| 2 | Is the platform plugin active? | the log line `Platform plugin tbccl is activated` (`metal` on the Metal Mac) | [Installing and starting](#installing-and-starting); [verify](verify-active.md) |
+| 3 | Is the link ready? | `python3 thunderbolt_link_doctor.py --peer <peer-link-address>` (read-only; [how to get it](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html)) | [Thunderbolt link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
+| 4 | Did the nodes find each other? | the leader waits for the headless node; vLLM's rendezvous port (`--master-port`) reachable on node 0 | [Ping works but the nodes time out](#ping-works-but-the-nodes-time-out) |
+| 5 | Did the TBCCL group form? | `backend=tbccl` with `world_size=2` in both worker logs | [Forming the pipeline](#forming-the-pipeline) |
+| 6 | Does generation work? | one `curl` completion ([quickstart](../getting-started/quickstart.md)); `VLLM_TBCCL_TRACE=1` for operation records | [While running and stopping](#while-running-and-stopping) |
+| 7 | Did stopping leave a process? | stop the leader first, then the headless node; `ps` on both | [While running and stopping](#while-running-and-stopping) |
+| 8 | Is it only slow? | the [benchmark methodology](../benchmarks/methodology.md); a single-device reference first | [Results](../benchmarks/results.md) |
+
+### Find your symptom
+
+| You see | Go to |
+|---|---|
+| `ImportError` about `libtorch_cuda.so` or a torch series; no matching wheel | [Installing and starting](#installing-and-starting) |
+| no `Platform plugin tbccl is activated` line (the backend is not active) | [Installing and starting](#installing-and-starting); [verify](verify-active.md) |
+| the Mac is the wrong backend (`metal` or `torch`) | [CUDA and Metal pairing](cuda-metal.md); [Installing and starting](#installing-and-starting) |
+| `protocol_mismatch ... wire protocol` | [Forming the pipeline](#forming-the-pipeline) |
+| timeout waiting for the other node; ping works | [Ping works but the nodes time out](#ping-works-but-the-nodes-time-out) |
+| out of GPU memory while loading | lower `--gpu-memory-utilization` ([quickstart](../getting-started/quickstart.md)); vLLM owns the allocation |
+| outputs differ from a single-node run | [While running and stopping](#while-running-and-stopping) (last row) |
+| the leader hangs, or a node keeps running after you stop | [While running and stopping](#while-running-and-stopping): upstream vLLM lifecycle behavior |
+
+### Which layer owns the error
+
+The tables below name an owner in every row. In short:
+
+| Layer | What it looks like | What to do |
+|---|---|---|
+| vllm-tbccl | the plugin, the device communicator, the Metal transport or a boundary codec raise it | this guide; report with `python -m vllm_tbccl.info` |
+| Native TBCCL | a result tag (`protocol_mismatch`, `timeout`) in the message | [TBCCL troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/troubleshooting.html) |
+| vLLM or vllm-metal | the executor, scheduling, worker liveness, model runner, memory allocation | upstream; the rows marked "upstream vLLM" say so |
+| Operating system | macOS Local Network or firewall prompts, a port in use | [link troubleshooting entries 9 and 10](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
+| Network configuration | wrong subnet, traffic over Wi-Fi, mismatched MTU | [link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
+| External dependencies | the CUDA 13 PyTorch build, `uv`, Xcode and its Metal toolchain | their own notes |
+
 ## Installing and starting
 
 | Symptom | Likely cause (owner) | Diagnostic | Fix |
@@ -27,6 +70,29 @@ Find the symptom, check the likely cause with the diagnostic, apply the fix. Sta
 | the Metal node rejects an architecture | the boundary-codec allowlist covers Llama and Qwen3 only (vllm-tbccl) | the error names the architecture | use a supported architecture or set `VLLM_TBCCL_ARCHITECTURE` only if it is genuinely compatible |
 | vllm-metal lacks the transport seam | an upstream vllm-metal was installed instead of the fork tag `v0.31.0-tbccl1` | `python -c "import vllm_metal.envs as e; print('VLLM_METAL_PP_TRANSPORT_CLS' in e.environment_variables)"` | [patch workflow](patches.md) |
 
+## Ping works but the nodes time out
+
+**Symptom.** `ping` answers both ways, yet the leader waits for the headless node (or the reverse) and a timeout follows.
+
+**Two different waits.** vLLM first forms its own cluster on `--master-addr:--master-port` (node 0's link address, port 29600 in the quickstart). TBCCL then connects the nodes' own ports (`TBCCL_LOCAL_ENDPOINT`). A wait before any `backend=tbccl` line points at the first.
+
+**Checks (read-only).** Run them while node 0 is waiting.
+
+```sh
+# 1. From the Mac: can it open a TCP connection to node 0's rendezvous port?
+python3 -c "import socket; socket.create_connection(('<node-0-link-address>', <master-port>), timeout=3).close(); print('TCP connect ok')"
+# 2. Does traffic to node 0 leave by the link you intend?
+route -n get <node-0-link-address>        # macOS;  ip route get <node-0-link-address> on Linux
+# 3. On each node, in the process that starts vLLM: the link address, never a hostname or 127.0.0.1
+echo $VLLM_HOST_IP $TBCCL_LOCAL_ENDPOINT
+```
+
+- `TCP connect ok` but a later timeout: the TBCCL ports (chosen at start with `:0`) are the problem; use the doctor's TCP mode ([link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html), entry 8) and check `VLLM_HOST_IP` and `TBCCL_LOCAL_ENDPOINT` on both nodes.
+- `timed out`: a firewall (the Linux host must allow the Mac's link address to reach port 29600), a wrong address, or a route through another interface.
+- `Connection refused`: node 0 is not running yet, or listens on another address.
+
+On the Mac run the node in a live session and answer the macOS prompt. **Do not** change firewall rules, MTU or interface settings as a first step.
+
 ## While running and stopping
 
 | Symptom | Likely cause (owner) | Diagnostic | Fix |
@@ -37,3 +103,7 @@ Find the symptom, check the likely cause with the diagnostic, apply the fix. Sta
 | outputs differ from a single-node run | check dtype, prefix caching and the model; strict prompts matched token for token in validation | compare against a single-rank reference with the same flags (`--no-enable-prefix-caching`, same dtype) | align the flags; report with `python -m vllm_tbccl.info` output |
 
 Peer-failure behavior of the TBCCL backend is validated on loopback and, at backend level, on the physical link; the engine-level hang above is not a transport failure.
+
+## When to ask for help
+
+Escalate when the checks isolate the layer and it is vllm-tbccl or TBCCL, or when you cannot isolate it. Include `python -m vllm_tbccl.info` from every node, the exact error, `python tools/collect_diagnostics.py` output (versions and interface names only; nothing is uploaded), the vLLM and vllm-metal versions and the commands you ran. See [getting help](https://tbccl.tensorsofthewall.com/en/latest/project/getting-help.html). Upstream behaviors (the rows marked "upstream vLLM") belong to the vLLM project. Security problems follow the [security policy](../project/security-policy.md).

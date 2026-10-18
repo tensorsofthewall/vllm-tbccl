@@ -1,6 +1,6 @@
 # How do I know TBCCL is being used?
 
-A silent fallback to another transport (Gloo, NCCL, vllm-metal's MLX ring) would invalidate a benchmark or a debugging session. These checks show that your pipeline runs on TBCCL.
+A silent fallback to another transport (Gloo, NCCL, vllm-metal's MLX ring) would invalidate a benchmark or a debugging session. Use this page when the backend does not seem to be active (no `Platform plugin tbccl is activated` line, or a different `backend=`), and to show that your pipeline runs on TBCCL.
 
 ## 1. The plugin is active
 
