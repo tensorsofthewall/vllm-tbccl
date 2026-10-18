@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "generator": "branding/tools/build_lockups.py",
+  "command": "python3 branding/tools/build_lockups.py --project vllm-tbccl",
+  "tools": {
+    "uharfbuzz": "0.56.3",
+    "fonttools": "4.67.0"
+  },
+  "typeface": {
+    "id": "inter-600",
+    "family": "Inter",
+    "style": "SemiBold",
+    "weight": 600,
+    "variations": null,
+    "file": "Inter-SemiBold.otf",
+    "version": "Version 3.019;git-0a5106e0b",
+    "file_sha256": "8c1990b6012254ea2b487161697d107357dd0ee55811cfd91c8c11227bbef457",
+    "license": "SIL Open Font License 1.1",
+    "copyright": "Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)",
+    "embedded": false,
+    "note": "Text is converted to paths; no font data is embedded or distributed."
+  },
+  "mark": {
+    "source": "branding/logo/tbccl-mark.svg",
+    "sha256": "aacd87aaf5709973eb6beed41b4b43ef2413697c59d51bd17081bd9c2d3282c4",
+    "modified": false
+  },
+  "projects": {
+    "vllm-tbccl": {
+      "accent": {
+        "light": "#523781",
+        "dark": "#BCA4F4"
+      }
+    }
+  },
+  "files": {
+    "vllm-tbccl-compact-dark.svg": "dcc9a3cfe8c3b3de4c277deb7c46f1c6a2d45d38e2441054be9850cc1e5908a3",
+    "vllm-tbccl-compact-light.svg": "e0bf455b02f05ee01d51ef8042a8d0b640c12af2e75c0b5f0c8dfb3944b2ebb4",
+    "vllm-tbccl-compact-mono-black.svg": "cad43bb5adf11fa70db542024a3159f532f1fa54058a1bd78bb12e3d64d2ccab",
+    "vllm-tbccl-compact-mono-white.svg": "3249a1b813e44960b187a02d615cc362b57fb00c956ab584a76b7a766697d081",
+    "vllm-tbccl-horizontal-dark.svg": "d713978b31c46590b51fa898894422cc2e2aefad34a58650779a70853db3a8cc",
+    "vllm-tbccl-horizontal-light.svg": "c60492c3a86d33de0d14d33f0871f099ed234203e6c9c4c873bfd4bba4b9a8f2",
+    "vllm-tbccl-horizontal-mono-black.svg": "263b5580a815a54c824a65af16e824a31ab001c0e6ef51a51126b99594b325de",
+    "vllm-tbccl-horizontal-mono-white.svg": "7325bb0fa56428b941d69e2583c92713a167f91feddfee1754f468e354094410",
+    "vllm-tbccl-stacked-dark.svg": "3b57c806ed6d242e9a26b207df18efa3ae0ba209ec627c3cb8d782ccabe38f15",
+    "vllm-tbccl-stacked-light.svg": "58604a4abb012c438419cc1e9d12460c6f0f9424888654a42ed8973ef068d51e",
+    "vllm-tbccl-stacked-mono-black.svg": "833de82af080ca1137262dafda51ff5cd8fd3bd4f37b2f55eaa1250a338d2581",
+    "vllm-tbccl-stacked-mono-white.svg": "e2ab605d9065fa2be315096322db0164dce0969e3bd78dc22747d3a391c08068"
+  }
+}
