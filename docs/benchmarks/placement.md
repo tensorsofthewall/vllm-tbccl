@@ -6,6 +6,9 @@ The runner calls the two cases *orientations*:
 
 * **CUDA-first**: the Linux CUDA machine is stage 0 and hosts the API.
 * **Metal-first**: the Mac is stage 0 and hosts the API.
+* **CPU-first**: in the CUDA and CPU pairing (no vllm-metal), the Mac CPU stage is stage 0 and hosts the API. The opposite order is CUDA-first with a CPU second stage.
+
+An orientation is named after the device of stage 0. "CUDA-first" therefore means the same thing in both pairings (CUDA stage 0), and the second stage is Metal or CPU depending on the pairing, which the result records.
 
 A comparison between orientations is only valid for the same model, layer split, dtype, prompt and output lengths, concurrency, and client placement. The runner records the orientation, the stage hosts, the stage devices and where the client ran in every result, and refuses to compare results that differ in them.
 
