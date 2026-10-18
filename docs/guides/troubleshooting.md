@@ -6,20 +6,27 @@ Find the symptom, check the likely cause with the diagnostic, apply the fix. Sta
 
 ### Work through it in this order
 
-Each step is read-only. Stop at the first step that fails: later steps depend on it.
+Each step is marked **Observe** (it reads state; nothing starts, stops or changes) or **Action** (you start, stop or configure a process, or run a test). No step changes network, firewall, driver or hardware settings. Stop at the first step that fails: later steps depend on it.
+
+```{table}
+:class: tb-stack tb-stack-steps
 
 | Step | Question | Check | If it fails |
 |---|---|---|---|
-| 1 | Which versions are installed? | `.venv/bin/python -m vllm_tbccl.info` on **every** node (same wire protocol; on the Metal Mac use `vllm-metal/.venv-vllm-metal/bin/python`) | [Installing and starting](#installing-and-starting) |
-| 2 | Is the platform plugin active? | the log line `Platform plugin tbccl is activated` (`metal` on the Metal Mac) | [Installing and starting](#installing-and-starting); [verify](verify-active.md) |
-| 3 | Is the link ready? | `python3 thunderbolt_link_doctor.py --peer <peer-link-address>` (read-only; [how to get it](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html)) | [Thunderbolt link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
-| 4 | Did the nodes find each other? | the leader waits for the headless node; vLLM's rendezvous port (`--master-port`) reachable on node 0 | [Ping works but the nodes time out](#ping-works-but-the-nodes-time-out) |
-| 5 | Did the TBCCL group form? | `backend=tbccl` with `world_size=2` in both worker logs | [Forming the pipeline](#forming-the-pipeline) |
-| 6 | Does generation work? | one `curl` completion ([quickstart](../getting-started/quickstart.md)); `VLLM_TBCCL_TRACE=1` for operation records | [While running and stopping](#while-running-and-stopping) |
-| 7 | Did stopping leave a process? | stop the leader first, then the headless node; `ps` on both | [While running and stopping](#while-running-and-stopping) |
-| 8 | Is it only slow? | the [benchmark methodology](../benchmarks/methodology.md); a single-device reference first | [Results](../benchmarks/results.md) |
+| 1 | Which versions are installed? | **Observe:** `.venv/bin/python -m vllm_tbccl.info` on **every** node (same wire protocol; on the Metal Mac use `vllm-metal/.venv-vllm-metal/bin/python`) | [Installing and starting](#installing-and-starting) |
+| 2 | Is the platform plugin active? | **Observe:** the log line `Platform plugin tbccl is activated` (`metal` on the Metal Mac) | [Installing and starting](#installing-and-starting); [verify](verify-active.md) |
+| 3 | Is the link ready? | **Observe:** `python3 thunderbolt_link_doctor.py --peer <peer-link-address>` (with `--peer` it also sends a ping and opens one TCP connection to the peer, and changes nothing; [how to get it](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html)) | [Thunderbolt link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
+| 4 | Did the nodes find each other? | **Observe:** the leader waits for the headless node (observe). **Action:** the one-line TCP connect test to vLLM's rendezvous port, `--master-port`, on node 0 ([below](#ping-works-but-the-nodes-time-out)) | [Ping works but the nodes time out](#ping-works-but-the-nodes-time-out) |
+| 5 | Did the TBCCL group form? | **Observe:** `backend=tbccl` with `world_size=2` in both worker logs | [Forming the pipeline](#forming-the-pipeline) |
+| 6 | Does generation work? | **Action:** send one `curl` completion to the running server ([quickstart](../getting-started/quickstart.md)), and start with `VLLM_TBCCL_TRACE=1` for operation records | [While running and stopping](#while-running-and-stopping) |
+| 7 | Did stopping leave a process? | **Action:** stop the leader first, then the headless node; then **Observe:** `ps` on both | [While running and stopping](#while-running-and-stopping) |
+| 8 | Is it only slow? | **Observe:** the [benchmark methodology](../benchmarks/methodology.md); a single-device reference first | [Results](../benchmarks/results.md) |
+```
 
 ### Find your symptom
+
+```{table}
+:class: tb-stack tb-stack-find
 
 | You see | Go to |
 |---|---|
@@ -31,10 +38,14 @@ Each step is read-only. Stop at the first step that fails: later steps depend on
 | out of GPU memory while loading | lower `--gpu-memory-utilization` ([quickstart](../getting-started/quickstart.md)); vLLM owns the allocation |
 | outputs differ from a single-node run | [While running and stopping](#while-running-and-stopping) (last row) |
 | the leader hangs, or a node keeps running after you stop | [While running and stopping](#while-running-and-stopping): upstream vLLM lifecycle behavior |
+```
 
 ### Which layer owns the error
 
 The tables below name an owner in every row. In short:
+
+```{table}
+:class: tb-stack tb-stack-owner
 
 | Layer | What it looks like | What to do |
 |---|---|---|
@@ -44,6 +55,7 @@ The tables below name an owner in every row. In short:
 | Operating system | macOS Local Network or firewall prompts, a port in use | [link troubleshooting entries 9 and 10](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
 | Network configuration | wrong subnet, traffic over Wi-Fi, mismatched MTU | [link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
 | External dependencies | the CUDA 13 PyTorch build, `uv`, Xcode and its Metal toolchain | their own notes |
+```
 
 ## Installing and starting
 
@@ -76,14 +88,14 @@ The tables below name an owner in every row. In short:
 
 **Two different waits.** vLLM first forms its own cluster on `--master-addr:--master-port` (node 0's link address, port 29600 in the quickstart). TBCCL then connects the nodes' own ports (`TBCCL_LOCAL_ENDPOINT`). A wait before any `backend=tbccl` line points at the first.
 
-**Checks (read-only).** Run them while node 0 is waiting.
+**Checks.** The route and environment commands are observations. The connection test is an **action**: it opens one TCP connection and closes it at once, which the listening side may log as a failed handshake, so run it only when no job you care about is starting. The link doctor's listener on a spare port (`--listen` / `--tcp-port`) tests the same path without touching a running job. Run them while the listening side is waiting.
 
 ```sh
-# 1. From the Mac: can it open a TCP connection to node 0's rendezvous port?
+# ACTION (opens and closes one TCP connection) - From the Mac: can it open a TCP connection to node 0's rendezvous port?
 python3 -c "import socket; socket.create_connection(('<node-0-link-address>', <master-port>), timeout=3).close(); print('TCP connect ok')"
-# 2. Does traffic to node 0 leave by the link you intend?
+# observe - Does traffic to node 0 leave by the link you intend?
 route -n get <node-0-link-address>        # macOS;  ip route get <node-0-link-address> on Linux
-# 3. On each node, in the process that starts vLLM: the link address, never a hostname or 127.0.0.1
+# observe - On each node, in the process that starts vLLM: the link address, never a hostname or 127.0.0.1
 echo $VLLM_HOST_IP $TBCCL_LOCAL_ENDPOINT
 ```
 

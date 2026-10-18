@@ -23,6 +23,9 @@ Metal tests skip on Linux. End-to-end tests skip without a local copy of the mod
 
 You do not need a GPU, a Mac or Thunderbolt hardware to contribute. Pick the lowest tier that covers your change and say in the pull request which tiers you ran.
 
+```{table}
+:class: tb-stack tb-stack-tiers
+
 | Tier | Needs | Commands | Covers |
 |---|---|---|---|
 | Documentation only | Python 3 | `make docs`, `make docs-linkcheck`, `python tools/check_compatibility_manifest.py`, `python tools/check_doc_commands.py`, `python tools/check_release_docs.py` | links, build, commands named in the docs, version facts |
@@ -32,6 +35,7 @@ You do not need a GPU, a Mac or Thunderbolt hardware to contribute. Pick the low
 | Metal | an Apple-silicon Mac with the vllm-metal fork tag | Metal tests in the same suite (they skip on Linux) | the Metal transport and codecs |
 | Physical link | two machines, a direct link and a model on both | `scripts/cross_host_engine.sh` and `scripts/physical_validation.sh`; never a generic run | real-link behavior; reads PCIe error counters before and after |
 | Packaging | a clean environment | the wheel build and inspection below | the wheel, sdist and shipped patches |
+```
 
 Documentation and Python-side changes need only the first two tiers. A change that affects the Metal or CUDA path should be run on that device by someone who has it; say so in the pull request instead of skipping it silently.
 

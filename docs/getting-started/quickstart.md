@@ -20,6 +20,9 @@ This is a complete launch of one vLLM pipeline across two machines: a **Linux CU
 
 ### Settings that must agree, and those that must differ
 
+```{table}
+:class: tb-stack tb-stack-settings
+
 | Setting | Linux CUDA node | Mac Metal node | Rule |
 |---|---|---|---|
 | Python environment | `.venv` (vLLM and vllm-tbccl) | `vllm-metal/.venv-vllm-metal` (vLLM, the fork and vllm-tbccl) | each node its own; the same vllm-tbccl version |
@@ -30,6 +33,7 @@ This is a complete launch of one vLLM pipeline across two machines: a **Linux CU
 | `--master-addr`, `--master-port` | `$LIP`, `29600` | `$LIP`, `29600` | **must be equal**: node 0's link address |
 | `--node-rank`, `--headless` | `0`, no | `1`, yes | differ |
 | model arguments (`$COMMON`) and the model | the same | the same | **must be equal**; the model must exist locally on both |
+```
 
 ## 1. Common settings
 
