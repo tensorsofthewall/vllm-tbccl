@@ -1,0 +1,105 @@
+{
+  "schema": "tbccl-doc-chart-data/1",
+  "accent": "vllm",
+  "provenance": "Curated by hand from the tables of docs/benchmarks/results.md. These are published aggregates, not raw measurement records: each value carries the exact text of the table cell it was read from, and no error bar or repetition count has been added that the page does not state. The Markdown tables are authoritative; a test fails when a chart input no longer appears in them.",
+  "charts": [
+    {
+      "id": "stage-orientation",
+      "title": "Stage order of the two-device pipeline: CUDA-first against Metal-first",
+      "summary": "Two panels with separate axes, each with two bars. Time per output token at concurrency 1 was 21.19 ms with the CUDA machine as stage 0 and 15.83 ms with the Mac as stage 0, five lifecycles each. Output throughput at concurrency 12 was 344.1 tokens per second CUDA-first and 450.4 Metal-first, five lifecycles each. The difference was present in this environment, but its cause is not known: stage order, API host and sampler location are confounded, and the boundary exchange was a small fraction of a decode step, so it must not be quoted as a transport effect.",
+      "conditions": "Qwen3-0.6B, bf16, PP=2, TP=1, prompt 128 tokens, 32 generated tokens, vLLM 0.31.0 with vllm-tbccl 0.2.0 over one direct Thunderbolt 4 link. Each lifecycle is a fresh engine start.",
+      "page": "results.md",
+      "section": "Stage order, concurrency 1 and 12",
+      "statistic": "the median over 5 independent lifecycles of each lifecycle's median request (TPOT) or of its closed-loop output tokens per second (throughput)",
+      "kind": "bars",
+      "series": [
+        {"id": "cuda", "style": "hatch-accent"},
+        {"id": "metal", "style": "solid"}
+      ],
+      "panels": [
+        {
+          "title": "Time per output token (TPOT), concurrency 1",
+          "unit": "milliseconds per output token",
+          "direction": "lower is better",
+          "note": ["Cause not isolated: stage order, API host and sampler location are confounded"],
+          "groups": [
+            {"label": "", "bars": [
+              {"label": "CUDA-first, 5 lifecycles", "series": "cuda", "value": 21.19, "published": "21.19 ms", "exact": true, "n": 5},
+              {"label": "Metal-first, 5 lifecycles", "series": "metal", "value": 15.83, "published": "15.83 ms", "exact": true, "n": 5}
+            ]}
+          ]
+        },
+        {
+          "title": "Output throughput, concurrency 12",
+          "unit": "output tokens per second",
+          "direction": "higher is better",
+          "groups": [
+            {"label": "", "bars": [
+              {"label": "CUDA-first, 5 lifecycles", "series": "cuda", "value": 344.1, "published": "344.1", "exact": true, "n": 5},
+              {"label": "Metal-first, 5 lifecycles", "series": "metal", "value": 450.4, "published": "450.4", "exact": true, "n": 5}
+            ]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "concurrency-scaling",
+      "title": "Output throughput against concurrency, by stage order",
+      "summary": "Line chart with measured points only at concurrency 1, 4 and 12. CUDA-first: 44.5, 156.2 and 341.3 output tokens per second. Metal-first: 58.8, 200.9 and 451.5. Throughput rose almost linearly over the measured range, and nothing saturated inside the validated limit of 12 concurrent requests. The lines are drawn only between measured points and are not extrapolated beyond 12.",
+      "conditions": "Closed loop, Qwen3-0.6B, bf16, PP=2, TP=1, prompt 128 tokens, 32 generated tokens, vLLM 0.31.0 with vllm-tbccl 0.2.0. Only concurrency 1, 4 and 12 were measured; nothing is shown or implied beyond 12.",
+      "page": "results.md",
+      "section": "Throughput scaling",
+      "statistic": "the median over all passes of five lifecycles per orientation",
+      "kind": "lines",
+      "x_label": "Concurrent requests (measured: 1, 4, 12)",
+      "y_label": "Output throughput",
+      "y_unit": "output tokens per second",
+      "y_scale": "linear",
+      "x_ticks": [{"x": 1, "label": "1"}, {"x": 4, "label": "4"}, {"x": 12, "label": "12"}],
+      "series": [
+        {"label": "Metal-first", "marker": "circle", "dash": "solid", "color": "accent", "points": [
+          {"x": 1, "value": 58.8, "published": "58.8", "exact": true, "n": 5},
+          {"x": 4, "value": 200.9, "published": "200.9", "exact": true, "n": 5},
+          {"x": 12, "value": 451.5, "published": "451.5", "exact": true, "n": 5}
+        ]},
+        {"label": "CUDA-first", "marker": "square", "dash": "dashed", "color": "neutral", "points": [
+          {"x": 1, "value": 44.5, "published": "44.5", "exact": true, "n": 5},
+          {"x": 4, "value": 156.2, "published": "156.2", "exact": true, "n": 5},
+          {"x": 12, "value": 341.3, "published": "341.3", "exact": true, "n": 5}
+        ]}
+      ]
+    },
+    {
+      "id": "single-device-vs-pipeline",
+      "title": "Time per output token: single devices against the two-device pipeline, concurrency 1",
+      "summary": "Horizontal bars, lower is better. One device: Linux CUDA GPU 7.97 ms, Mac Metal 14.48 ms, Mac CPU 23.48 ms. Two-device pipeline: CUDA-first 21.19 ms and Metal-first 15.83 ms. The model, Qwen3-0.6B, fits on a single device, and the best pipeline result (15.83 ms) was slower than the CUDA GPU alone (7.97 ms). Pipeline parallelism exists for models that do not fit one machine; it does not make a model that fits faster.",
+      "conditions": "Qwen3-0.6B, bf16, concurrency 1, vLLM 0.31.0. The single-device runs and the pipeline run in different execution environments and placements (the Mac CPU stage and the Metal stage use different software environments), so treat the comparison as context rather than as an isolated measurement of distribution.",
+      "page": "results.md",
+      "section": ["Single-device references", "Stage order, concurrency 1 and 12"],
+      "statistic": "TPOT as published; the pipeline rows are medians over 5 lifecycles, and the page does not state a repetition count for the single-device rows",
+      "kind": "bars",
+      "series": [
+        {"id": "single", "style": "hatch"},
+        {"id": "pipeline", "style": "solid"}
+      ],
+      "panels": [
+        {
+          "unit": "milliseconds per output token",
+          "direction": "lower is better",
+          "note": ["Slower than one CUDA GPU: this model fits on a single device"],
+          "groups": [
+            {"label": "Single device", "bars": [
+              {"label": "Linux CUDA GPU", "series": "single", "value": 7.97, "published": "7.97 ms", "exact": true, "n": "not stated on the page"},
+              {"label": "Mac (Metal)", "series": "single", "value": 14.48, "published": "14.48 ms", "exact": true, "n": "not stated on the page"},
+              {"label": "Mac CPU", "series": "single", "value": 23.48, "published": "23.48 ms", "exact": true, "n": "not stated on the page"}
+            ]},
+            {"label": "Two-device pipeline (PP=2)", "bars": [
+              {"label": "CUDA-first", "series": "pipeline", "value": 21.19, "published": "21.19 ms", "exact": true, "n": 5},
+              {"label": "Metal-first", "series": "pipeline", "value": 15.83, "published": "15.83 ms", "exact": true, "n": 5}
+            ]}
+          ]
+        }
+      ]
+    }
+  ]
+}

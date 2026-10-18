@@ -2,6 +2,16 @@
 
 These are reference measurements from one pair of machines. They show what the benchmarks produce and how large the effects were there; they are not a statement about other hardware, other link types, other models or other vLLM versions. Run the benchmarks on your own systems for numbers that apply to them.
 
+## Performance at a glance
+
+| What was measured | Result on this pair of machines |
+|---|---|
+| Time per output token, concurrency 1, two-device pipeline | 21.19 ms with CUDA first; 15.83 ms with the Mac first (5 / 5 lifecycles) |
+| Output tokens per second, concurrency 12 | 344.1 with CUDA first; 450.4 with the Mac first |
+| The same small model on one device, concurrency 1 | 7.97 ms on the Linux CUDA GPU alone, faster than either pipeline order |
+
+The model fits on one device, so these numbers show what a pipeline costs and how stage order changed it here. They do not show that distributing a model is faster, and the stage-order difference has an unknown cause. They come from one pair of machines joined by one Thunderbolt 4 cable. Each chart below is drawn from the table next to it; the table is the record and the chart only makes its shape easier to see. The charts need no scripts and follow the light and dark theme.
+
 ## What was measured
 
 | | Linux host | macOS host |
@@ -28,6 +38,12 @@ Per-lifecycle TPOT (ms): CUDA-first 21.10, 21.46, 21.44, 20.98, 21.19; Metal-fir
 
 The difference was present with the client on the other machine, with tracing on, and at every prompt and output length tried. **Its cause is not known.** The API node follows stage 0 by construction, so stage order, API host and sampler location are confounded; the pipeline boundary exchange was about 3 to 5 percent of a decode step (below), so the gap is not explained by network transfer. Do not quote it as a transport effect.
 
+```{raw} html
+:file: charts/stage-orientation.html
+```
+
+The two panels use separate axes because they are different metrics. The chart shows that the Mac-first order was faster on both in this environment; it does not show why. The setup, the placement rules and what is confounded are in [Pipeline placement](placement.md).
+
 ## Throughput scaling
 
 Output tokens per second, closed loop, median over all passes of five lifecycles per orientation:
@@ -40,6 +56,12 @@ Output tokens per second, closed loop, median over all passes of five lifecycles
 
 TPOT stayed nearly flat as concurrency rose to 12, so throughput scaled almost linearly; nothing saturated inside the validated limit of 12 concurrent requests. (The concurrency-12 figures differ slightly from the table above because they aggregate all passes instead of lifecycle medians.)
 
+```{raw} html
+:file: charts/concurrency-scaling.html
+```
+
+Only concurrency 1, 4 and 12 were measured, so the chart stops at 12. It does not say what happens at higher concurrency.
+
 ## Single-device references
 
 The same model on one device, TPOT at concurrency 1:
@@ -51,6 +73,12 @@ The same model on one device, TPOT at concurrency 1:
 | Mac CPU | 23.48 ms |
 
 **The two-device pipeline was slower than a single device for this model** (best pipeline 15.83 ms against 7.97 ms on the CUDA GPU alone). Qwen3-0.6B fits on one device; pipeline parallelism is for models that do not.
+
+```{raw} html
+:file: charts/single-device-vs-pipeline.html
+```
+
+The chart keeps the slower pipeline in view on purpose. Pipeline parallelism lets a model run that cannot fit on one device; it does not make a model that fits run faster. The single-device and pipeline runs also differ in execution environment and placement, so the comparison is context for that conclusion and not an isolated cost of distribution.
 
 ## The pipeline boundary
 
@@ -67,3 +95,15 @@ Time to first token grew linearly with the prompt: about 0.22 ms per prompt toke
 * The stage-order effect is unexplained and confounded with API and sampler placement.
 * The Mac CPU stage and the Metal stage use different software environments; they are not interchangeable.
 * AER was unavailable (see above).
+
+## Reproducing and reading these results
+
+* Benchmark methodology, including what is timed and what may be compared: [Methodology and limitations](methodology.md).
+* What each workload does and how its metrics are defined: [Inference workloads](workloads.md).
+* Where each stage runs and why stage order is confounded with the API host: [Pipeline placement](placement.md).
+* Correctness against a single-device reference is a gate before every timed phase (see [Inference workloads](workloads.md)); a run that fails it records no measurement.
+* To run the workloads yourself, start with [Getting started](getting-started.md). Supported versions and configurations are in the [validated configurations](../validation/index.md) and the [pipeline-parallelism guide](../guides/pipeline-parallelism.md).
+
+## How the charts are made
+
+The chart inputs are in `docs/benchmarks/chart-data.json`, copied by hand from the tables on this page. They are published aggregates, not raw records, and carry the exact text of each cell. `python3 tools/benchmark_charts.py` regenerates the figures in `docs/benchmarks/charts/` deterministically and `--check` fails when they are out of date; a test fails when a chart input no longer appears in the table it cites.
