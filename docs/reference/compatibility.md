@@ -2,7 +2,7 @@
 
 | | Value |
 |---|---|
-| Package version | 0.3.0rc1 |
+| Package version | 0.3.0 |
 | Python | 3.12 and 3.13 (`requires-python = ">=3.12,<3.14"`; wheels `cp312` and `cp313`). The CUDA and Metal pairing runs on Python 3.12 on the Mac (vllm-metal 0.31.0 and vLLM's macOS wheel); use the same minor on both hosts |
 | vLLM | **0.31.0** for both pairings; `SUPPORTED_VLLM = ("0.31.0",)`. 0.30.0 was the validated version of 0.2.0rc1 and is historical |
 | PyTorch | 2.13.x (the bundled native module is tied to one torch minor series) |

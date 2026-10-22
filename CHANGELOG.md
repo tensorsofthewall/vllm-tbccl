@@ -2,14 +2,14 @@
 
 All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. 0.2.0 is the first release; it is experimental.
 
-## 0.3.0rc1
+## 0.3.0
 
-Release candidate (pre-release). First release candidate of 0.3.0, the first minor release after 0.2. There is no change to the vLLM platform plugin, the pipeline communication, the activation metadata format, the supported vLLM version (0.31.0), the pinned vllm-metal fork revision, PyTorch (2.13.x), the Python versions (3.12 and 3.13), the TBCCL C ABI (1) or the wire protocol (4). Release candidates are for validation on real hardware; expect an rc2 if a blocker is found.
+The first minor release after 0.2, promoted from release candidate 0.3.0rc1 with no code change. There is no change to the vLLM platform plugin, the pipeline communication, the activation metadata format, the supported vLLM version (0.31.0), the pinned vllm-metal fork revision, PyTorch (2.13.x), the Python versions (3.12 and 3.13), the TBCCL C ABI (1) or the wire protocol (4).
 
 ### Installation
 
-- The same wheels (`cp312` and `cp313`, Linux x86-64 and macOS arm64) and sdist as 0.2.x, named `vllm_tbccl-0.3.0rc1-...`, attached to the GitHub pre-release with SPDX SBOMs, `SHA256SUMS` and build-provenance attestations.
-- The wheels are built against TBCCL 0.7.0rc1 and statically link it. A 0.2.x wheel keeps the TBCCL it was built with.
+- The same wheels (`cp312` and `cp313`, Linux x86-64 and macOS arm64) and sdist as 0.2.x, named `vllm_tbccl-0.3.0-...`, attached to the GitHub release with SPDX SBOMs, `SHA256SUMS` and build-provenance attestations.
+- The wheels are built against TBCCL 0.7.0 and statically link it. A 0.2.x wheel keeps the TBCCL it was built with.
 
 ### Changed
 
