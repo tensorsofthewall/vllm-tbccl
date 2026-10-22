@@ -45,6 +45,7 @@ These are vLLM behaviors, **not** TBCCL transport failures: the TBCCL backend fa
 |---|---|
 | a Mac with vllm-metal installed should use the CPU pairing | `VLLM_TBCCL_BACKEND=torch` |
 | a mixed CUDA and CPU pair asserts in the model runner | `VLLM_USE_V2_MODEL_RUNNER=0` on both hosts |
+| a cross-host engine never comes up, with no error | the V1 model runner must be selected on **both** hosts (`VLLM_USE_V2_MODEL_RUNNER=0`); a mismatch can hang silently. The V2 runner is not supported in the validated configuration: with it on both hosts the first request fails (`sync_and_gather_intermediate_tensors`) |
 | a Mac node hangs at start | answer the macOS firewall / Local Network prompt from a local session; run the node in a live terminal or SSH session |
 | vllm-metal lacks the transport seam | [patch workflow](../guides/patches.md) |
 | after a dead headless node or an unclean stop | stop both nodes explicitly and restart them; do not rely on the leader to notice |
