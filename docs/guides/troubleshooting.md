@@ -76,7 +76,7 @@ The tables below name an owner in every row. In short:
 | Symptom | Likely cause (owner) | Diagnostic | Fix |
 |---|---|---|---|
 | `protocol_mismatch ... wire protocol` | wheels on the two hosts bundle different TBCCL wire protocols (TBCCL) | `python -m vllm_tbccl.info` on each host | install the same vllm-tbccl version on both |
-| startup assertion in the model runner on a CUDA and CPU pair | `VLLM_USE_V2_MODEL_RUNNER` differs between hosts (vLLM) | the environment of both hosts | set `VLLM_USE_V2_MODEL_RUNNER=0` on both |
+| startup assertion in the model runner on a CUDA and CPU pair | `VLLM_USE_V2_MODEL_RUNNER` differs between hosts (vLLM) | the environment of both hosts | set `VLLM_USE_V2_MODEL_RUNNER=0` on both. If the engine instead never comes up and prints nothing, check the same variable first: the V1 runner is required on every host, and the V2 runner is not supported in the validated configuration |
 | the engine cannot form the cross-host pipeline over a LAN | the multiprocessing executor's reverse-direction queues are blocked by the firewall (vLLM) | try the direct link | use a direct link such as Thunderbolt 4 between the nodes |
 | timeout waiting for the other node | wrong `--master-addr`, `VLLM_HOST_IP` or `TBCCL_LOCAL_ENDPOINT` host; node not started; firewall prompt on the Mac unanswered | `ping` the peer; check the prompt | give each node its own link address; start both; answer the prompt, run in a live session |
 | the Metal node rejects an architecture | the boundary-codec allowlist covers Llama and Qwen3 only (vllm-tbccl) | the error names the architecture | use a supported architecture or set `VLLM_TBCCL_ARCHITECTURE` only if it is genuinely compatible |

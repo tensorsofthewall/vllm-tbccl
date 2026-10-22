@@ -2,6 +2,33 @@
 
 All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. 0.2.0 is the first release; it is experimental.
 
+## 0.3.0rc1
+
+Release candidate (pre-release). First release candidate of 0.3.0, the first minor release after 0.2. There is no change to the vLLM platform plugin, the pipeline communication, the activation metadata format, the supported vLLM version (0.31.0), the pinned vllm-metal fork revision, PyTorch (2.13.x), the Python versions (3.12 and 3.13), the TBCCL C ABI (1) or the wire protocol (4). Release candidates are for validation on real hardware; expect an rc2 if a blocker is found.
+
+### Installation
+
+- The same wheels (`cp312` and `cp313`, Linux x86-64 and macOS arm64) and sdist as 0.2.x, named `vllm_tbccl-0.3.0rc1-...`, attached to the GitHub pre-release with SPDX SBOMs, `SHA256SUMS` and build-provenance attestations.
+- The wheels are built against TBCCL 0.7.0rc1 and statically link it. A 0.2.x wheel keeps the TBCCL it was built with.
+
+### Changed
+
+- The bundled TBCCL 0.7.0 runs the two-rank `all_gather` as a concurrent exchange and offers an opt-in pipelined `all_reduce` (`TBCCL_ALLREDUCE_PIPELINE_BYTES`). The pipeline boundary of vLLM uses point-to-point transfers, so neither changes the cost of an activation transfer; the adapter needs no setting.
+
+### Documentation
+
+- The requirement that `VLLM_USE_V2_MODEL_RUNNER=0` be set on **every** host is stated in the limitations and troubleshooting pages: a mismatch can leave the engine hanging with no error, and the V2 model runner is not supported in the validated configuration.
+- The activation-metadata exchange (an 8-byte size message and a pickled payload on the CPU group, then the tensors on the TBCCL group) costs about 190 to 210 microseconds per boundary transfer on a Thunderbolt 4 link. It is unchanged in this release; changing it would end interoperability with vLLM's generic path.
+
+### Compatibility
+
+- vLLM 0.31.0, PyTorch 2.13.x, CPython 3.12 and 3.13, TBCCL 0.6.0 or newer as a build-time minimum (C ABI 1, wire protocol 4). The vllm-metal fork pin is unchanged.
+
+### Known limitations
+
+- The measurements above come from one Linux CUDA / Apple Metal machine pair. PCIe AER reporting was unavailable on the Linux host, so no statement about AER errors is made.
+- On a cross-host CUDA and CPU pair, 7 of 8 test prompts matched the single-host reference token for token in both orientations; the one difference is a near-tie in the next-token probabilities.
+
 ## 0.2.1
 
 Patch release. It adds the public vLLM benchmark provider and its documentation. There is no change to the vLLM platform plugin, the pipeline communication, the supported vLLM version (0.31.0), the pinned vllm-metal fork revision, PyTorch (2.13.x), the Python versions, the TBCCL C ABI (1) or the wire protocol (4), and nothing in this release is a performance improvement. The wheels are built against TBCCL 0.6.1 (a patch release of 0.6.0 without runtime change); the minimum TBCCL package stays 0.6.0.
