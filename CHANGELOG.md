@@ -2,6 +2,22 @@
 
 All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. 0.2.0 is the first release; it is experimental.
 
+## 0.3.1
+
+Security-maintenance patch release. There is no change to the adapter source (`csrc/`, `vllm_tbccl/`), the supported vLLM 0.31.0 line, the TBCCL C ABI (1) or the wire protocol (4); the version string is the only source difference. It is experimental.
+
+This is **not** a fix for a vulnerability in vllm-tbccl or in 0.3.0. In October 2026 the emSign root affected by the eMudhra intermediate-key compromise was removed from the CA bundles of Python tooling (certifi 2026.10.19, pip 26.2.2, uv 0.13.4). None of the published 0.3.0 wheels contains a CA bundle or TLS code (all of them were searched). What this release changes is the environment the wheels are built in and the TBCCL they bundle: they are rebuilt in a patched manylinux image, with pip 26.2.2 and uv 0.13.5 and with the revoked root blocked in the build container's system bundle, against TBCCL 0.7.1. The 0.3.0 wheels stay as published and are not unsafe to use.
+
+### Installation
+
+- Two CI-built wheels per platform set, named `vllm_tbccl-0.3.1-...`, attached to the GitHub release with an SPDX SBOM, `SHA256SUMS` and a build-provenance attestation. They are not published on PyPI or TestPyPI. The wheels statically link TBCCL 0.7.1.
+
+### Security
+
+- The documentation build pins certifi 2026.10.19; the release and documentation jobs install pip 26.2.2 from its hash-pinned wheel before their first pip use; the manylinux_2_28 image moves to a digest with pip 26.2.2, certifi 2026.10.19 and uv 0.13.4 (compilers unchanged) and the clean-install test image to Python 3.13.17; `tools/check_trust_dependencies.py` rejects affected pins and TLS-verification bypasses.
+- The Metal pairing's installation steps now say to install uv 0.13.4 or later before running the fork's installer: the installer of the immutable fork tag `v0.31.0-tbccl1` (which does not change) installs uv 0.9.18 when no uv is found. The fork's `main` installs uv 0.13.5.
+- Use pip 26.2.2 or later, uv 0.13.4 or later and certifi 2026.10.19 or later in the environments where you install the adapter; upgrading the `certifi` package does not patch an older pip. See `SECURITY.md`.
+
 ## 0.3.0
 
 The first minor release after 0.2, promoted from release candidate 0.3.0rc1 with no code change. There is no change to the vLLM platform plugin, the pipeline communication, the activation metadata format, the supported vLLM version (0.31.0), the pinned vllm-metal fork revision, PyTorch (2.13.x), the Python versions (3.12 and 3.13), the TBCCL C ABI (1) or the wire protocol (4).
