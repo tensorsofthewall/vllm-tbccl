@@ -36,6 +36,7 @@ Both are validated for PP=2, TP=1 with Qwen3-0.6B ([validated configurations](..
 | PyTorch | **2.13.x, the CUDA 13 build** (`+cu130`); vLLM pins the exact version | 2.13.x |
 | vLLM | 0.31.0, from PyPI | 0.31.0, the prebuilt macOS wheel that vllm-metal's installer uses |
 | Wheel | `manylinux_2_27_x86_64` | `macosx_14_0_arm64` |
+| Tools | uv 0.13.4 or later, pip 26.2.2 or later and certifi 2026.10.19 or later (the October 2026 emSign CA removal; see the [security policy](https://tbccl.tensorsofthewall.com/en/latest/project/security-policy.html)). The wheel contains no CA bundle | same |
 
 ```{warning}
 The Linux wheel is linked against `libtorch_cuda.so` and `libc10_cuda.so`: it needs the **CUDA 13 build of PyTorch**, which is what vLLM installs when you use the `cu130` index below. A CPU-only PyTorch for Linux does not work. Use one torch version in the whole environment, install the wheel with `--no-deps` and never use `--reinstall`, which rewrites torch.
