@@ -7,7 +7,7 @@ OUT=${1:?output directory}
 SRC=/src
 git config --global --add safe.directory '*'
 HERE=$(cd "$(dirname "$0")" && pwd)
-# The system bundle of the image still lists the emSign roots revoked in October 2026
+# The system bundle of the image still lists the emSign root revoked in October 2026 (emSign ECC Root CA - G3)
 bash "$HERE/distrust_emsign.sh"
 dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
 dnf install -y -q cuda-nvcc-13-0-13.0.88-1 cuda-cudart-devel-13-0-13.0.96-1 cuda-driver-devel-13-0-13.0.96-1
