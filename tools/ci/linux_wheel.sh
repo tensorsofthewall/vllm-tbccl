@@ -6,6 +6,9 @@ set -euo pipefail
 OUT=${1:?output directory}
 SRC=/src
 git config --global --add safe.directory '*'
+HERE=$(cd "$(dirname "$0")" && pwd)
+# The system bundle of the image still lists the emSign root revoked in October 2026 (emSign ECC Root CA - G3)
+bash "$HERE/distrust_emsign.sh"
 dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
 dnf install -y -q cuda-nvcc-13-0-13.0.88-1 cuda-cudart-devel-13-0-13.0.96-1 cuda-driver-devel-13-0-13.0.96-1
 export PATH=/usr/local/cuda-13.0/bin:$PATH
@@ -18,6 +21,7 @@ export TBCCL_ROOT=$(ls -d /w/pfx/tbccl-*)
 for PYTAG in cp312-cp312 cp313-cp313; do
     PYBIN=/opt/python/$PYTAG/bin
     # PyTorch 2.13.0 from PyPI: the Linux build is CUDA 13.0 and brings the CUDA runtime as pip packages, which is what the wheel is repaired against
+    bash "$HERE/bootstrap_pip.sh" "$PYBIN/python"
     "$PYBIN/pip" install -q "torch==2.13.0" "build==1.6.1" "auditwheel==6.8.2" "patchelf==0.17.2.4" numpy setuptools wheel
     { echo "# $PYTAG"; "$PYBIN/pip" freeze; } >> "$OUT/build-environment.txt"
     for n in 1 2; do
