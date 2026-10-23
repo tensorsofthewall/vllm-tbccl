@@ -9,7 +9,7 @@ vllm-tbccl is a vLLM platform plugin that lets one vLLM pipeline span machines w
 :::
 
 ```{note}
-**Release.** The current release is 0.3.0 (vLLM 0.31.0, PyTorch 2.13.x, CPython 3.12 and 3.13, TBCCL C ABI 1 / wire protocol 4), whose wheels bundle TBCCL 0.7.0, with no change to the vLLM integration. It is experimental.
+**Release.** The current release is 0.3.1 (vLLM 0.31.0, PyTorch 2.13.x, CPython 3.12 and 3.13, TBCCL C ABI 1 / wire protocol 4), whose wheels bundle TBCCL 0.7.1, with no change to the vLLM integration. It is experimental.
 ```
 
 <nav class="tb-eco" aria-label="TBCCL ecosystem: the four documentation sites">

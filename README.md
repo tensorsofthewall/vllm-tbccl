@@ -9,7 +9,7 @@
 
 vllm-tbccl is an out-of-tree [vLLM](https://github.com/vllm-project/vllm) platform plugin that lets one vLLM pipeline span machines with different accelerators, for example a Linux host with an NVIDIA GPU and a Mac with Apple silicon, joined by a direct Thunderbolt 4 link or any TCP network, with no NCCL data path. It carries vLLM's device-group communication (and, with [vllm-metal](https://github.com/vllm-project/vllm-metal), its pipeline activations) over [TBCCL](https://github.com/tensorsofthewall/tbccl).
 
-> **Status:** **0.3.0** (experimental). 0.2.0rc1 had a correctness defect for CUDA and Metal pipelines under concurrent requests (row order between the stages); it is fixed since 0.2.0rc2, see the [changelog](CHANGELOG.md). Do not use 0.2.0rc1.
+> **Status:** **0.3.1** (experimental). 0.2.0rc1 had a correctness defect for CUDA and Metal pipelines under concurrent requests (row order between the stages); it is fixed since 0.2.0rc2, see the [changelog](CHANGELOG.md). Do not use 0.2.0rc1.
 
 vllm-tbccl is **standalone**: the wheel carries its own small native c10d backend, statically linked to libtbccl's stable C ABI. It owns no transport or algorithm, and it does **not** use or require torch-tbccl (or any other TBCCL adapter).
 
@@ -37,7 +37,7 @@ Prebuilt wheels, no compiler, no TBCCL install. Every command names its environm
 ```sh
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python "vllm==0.31.0" --torch-backend cu130
-uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.3.0/vllm_tbccl-0.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.3.1/vllm_tbccl-0.3.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 .venv/bin/python -m vllm_tbccl.info
 ```
 
@@ -46,16 +46,16 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 ```sh
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python https://github.com/vllm-project/vllm/releases/download/v0.31.0/vllm-0.31.0%2Bcpu-cp312-cp312-macosx_11_0_arm64.whl
-uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.3.0/vllm_tbccl-0.3.0-cp312-cp312-macosx_14_0_arm64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.3.1/vllm_tbccl-0.3.1-cp312-cp312-macosx_14_0_arm64.whl
 .venv/bin/python -m vllm_tbccl.info
 ```
 
-**Mac node, pairing B (Metal)**: install the fork at its immutable tag with its own installer from that checkout (it needs Xcode's command-line tools and Metal toolchain; it creates `.venv-vllm-metal` inside the checkout), then add the wheel to that same environment:
+**Mac node, pairing B (Metal)**: install uv 0.13.4 or later first (the fork's installer would otherwise install uv 0.9.18, which trusts the emSign root revoked in October 2026), then install the fork at its immutable tag with its own installer from that checkout (it needs Xcode's command-line tools and Metal toolchain; it creates `.venv-vllm-metal` inside the checkout), then add the wheel to that same environment:
 
 ```sh
 git clone --branch v0.31.0-tbccl1 --depth 1 https://github.com/tensorsofthewall/vllm-metal.git
 (cd vllm-metal && ./install.sh)
-uv pip install --python vllm-metal/.venv-vllm-metal/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.3.0/vllm_tbccl-0.3.0-cp312-cp312-macosx_14_0_arm64.whl
+uv pip install --python vllm-metal/.venv-vllm-metal/bin/python --no-deps https://github.com/tensorsofthewall/vllm-tbccl/releases/download/v0.3.1/vllm_tbccl-0.3.1-cp312-cp312-macosx_14_0_arm64.whl
 vllm-metal/.venv-vllm-metal/bin/python -m vllm_tbccl.info
 ```
 
